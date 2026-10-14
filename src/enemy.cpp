@@ -7,6 +7,8 @@
 #include "bn_regular_bg_items_enemy_st_horiz_l.h"
 #include "bn_regular_bg_items_enemy_st_horiz_r.h"
 #include "bn_regular_bg_items_enemy_st_overhead.h"
+#include "bn_regular_bg_items_enemy_st_rise_l.h"
+#include "bn_regular_bg_items_enemy_st_rise_r.h"
 #include "bn_regular_bg_items_enemy_st_slash_l.h"
 #include "bn_regular_bg_items_enemy_st_slash_r.h"
 #include "bn_regular_bg_items_enemy_st_sweep.h"
@@ -14,11 +16,15 @@
 #include "bn_regular_bg_items_enemy_wu_horiz_l.h"
 #include "bn_regular_bg_items_enemy_wu_horiz_r.h"
 #include "bn_regular_bg_items_enemy_wu_overhead.h"
+#include "bn_regular_bg_items_enemy_wu_rise_l.h"
+#include "bn_regular_bg_items_enemy_wu_rise_r.h"
 #include "bn_regular_bg_items_enemy_wu_slash_l.h"
 #include "bn_regular_bg_items_enemy_wu_slash_r.h"
 #include "bn_regular_bg_items_enemy_wu_sweep.h"
 #include "bn_regular_bg_items_enemy_wu_thrust.h"
 #include "bn_sprite_items_telegraph.h"
+#include "bn_bg_palette_items_enemy_palette_brute.h"
+#include "bn_bg_palette_items_enemy_palette_duelist.h"
 
 namespace igb
 {
@@ -37,6 +43,8 @@ namespace
         &bn::regular_bg_items::enemy_wu_overhead,
         &bn::regular_bg_items::enemy_wu_sweep,
         &bn::regular_bg_items::enemy_wu_thrust,
+        &bn::regular_bg_items::enemy_wu_rise_l,
+        &bn::regular_bg_items::enemy_wu_rise_r,
     };
 
     constexpr const bn::regular_bg_item* strike_poses[] = {
@@ -47,10 +55,19 @@ namespace
         &bn::regular_bg_items::enemy_st_overhead,
         &bn::regular_bg_items::enemy_st_sweep,
         &bn::regular_bg_items::enemy_st_thrust,
+        &bn::regular_bg_items::enemy_st_rise_l,
+        &bn::regular_bg_items::enemy_st_rise_r,
     };
 
     static_assert(sizeof(windup_poses) / sizeof(windup_poses[0]) == int(attack_id::COUNT));
     static_assert(sizeof(strike_poses) / sizeof(strike_poses[0]) == int(attack_id::COUNT));
+
+    // Palette swaps by enemy_type::palette; index 0 keeps the pose art's own colors.
+    constexpr const bn::bg_palette_item* type_palettes[] = {
+        nullptr,
+        &bn::bg_palette_items::enemy_palette_brute,
+        &bn::bg_palette_items::enemy_palette_duelist,
+    };
 
     // Telegraph sprite frames.
     constexpr int trail_normal_frame = 0;
@@ -66,7 +83,11 @@ namespace
         FADE_NONE,
         FADE_FLASH_WHITE,
         FADE_FLASH_RED,
+        FADE_GLOW_LOW,  // Unblockable wind-up pulse
+        FADE_GLOW_HIGH,
         FADE_DIM,
+        FADE_SUPER,     // Gold tint while stunned by the hero's super
+        FADE_FROZEN,    // Blue tint while frozen by Ice
         FADE_DEFEAT     // Grows every frame while sinking
     };
 
@@ -76,9 +97,11 @@ namespace
     constexpr bn::fixed defeat_fade_max = 0.7;
 }
 
-enemy::enemy(const tuning::enemy_tier& tier) :
+enemy::enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type) :
     _tier(tier),
-    _bg(bn::regular_bg_items::enemy_idle.create_bg(0, 0))
+    _type(type),
+    _bg(bn::regular_bg_items::enemy_idle.create_bg(0, 0)),
+    _hp(type.max_hp)
 {
     _bg.set_priority(bg_priority);
 
@@ -86,9 +109,10 @@ enemy::enemy(const tuning::enemy_tier& tier) :
     {
         attack_id id = attack_id(index);
 
-        if(tier.diagonal_slashes || ! attack_type_of(id).diagonal)
+        if(tier_throws(tier, id) && type.attack_weights[index] > 0)
         {
             _attack_pool.push_back(id);
+            _attack_pool_weight += type.attack_weights[index];
         }
     }
 
@@ -136,30 +160,48 @@ void enemy::update()
         _advance();
     }
 
+    // Feint: the fake wind-up snaps into the real one.
+    if(_state == enemy_state::WINDUP && current_attack().feint && ! _feint_switched &&
+       _state_frames >= feint_fake_frames(current_attack(), _tier))
+    {
+        _feint_switched = true;
+        _phase_start = _state_frames;
+        _show_windup(current_attack().id, current_attack().heavy);
+    }
+
     _update_effects();
     _update_trail();
 }
 
 void enemy::reel(int frames)
 {
+    _reel_continues = true;
     _enter(enemy_state::STAGGERED, frames);
 }
 
-void enemy::open(int frames)
+void enemy::interrupt(int frames)
 {
+    _reel_continues = false;
+    _enter(enemy_state::STAGGERED, frames);
+}
+
+void enemy::open(int frames, open_kind kind)
+{
+    _open_kind = kind;
     _enter(enemy_state::OPEN, frames);
 }
 
-void enemy::take_hit(int direction, int damage)
+void enemy::take_hit(int direction, int damage, bool finisher)
 {
     _hp = _hp > damage ? _hp - damage : 0;
     _hit_frames = tuning::enemy_hit_frames;
+    _hit_finisher = finisher;
 
     // Streak across the body along the slash direction.
     bn::fixed_point step((direction & dir::LEFT) ? -1 : (direction & dir::RIGHT) ? 1 : 0,
                          (direction & dir::UP) ? -1 : (direction & dir::DOWN) ? 1 : 0);
     bn::fixed_point offset = step * hit_streak_half_length;
-    _place_trail(body_center - offset, body_center + offset, trail_normal_frame);
+    _place_trail(body_center - offset, body_center + offset, finisher ? trail_heavy_frame : trail_normal_frame);
 }
 
 void enemy::defeat()
@@ -207,7 +249,7 @@ void enemy::_advance()
         break;
 
     case enemy_state::STAGGERED:
-        if(! on_last_attack())
+        if(_reel_continues && ! on_last_attack())
         {
             ++_sequence_index;
             _enter(enemy_state::WINDUP, windup_frames(current_attack(), _tier));
@@ -236,18 +278,27 @@ void enemy::_enter(enemy_state state, int length)
     case enemy_state::WINDUP:
         {
             const attack_step& step = current_attack();
-            const attack_type& type = attack_type_of(step.id);
-            _bg.set_item(*windup_poses[int(step.id)]);
-            _place_trail(type.swing_from, type.swing_to, step.heavy ? trail_heavy_frame : trail_normal_frame);
+            _phase_start = 0;
+            _feint_switched = false;
+
+            // A feint shows its fake as an ordinary swing: no heavy glow until the switch.
+            if(step.feint)
+            {
+                _show_windup(step.feint_from, false);
+            }
+            else
+            {
+                _show_windup(step.id, step.heavy);
+            }
         }
         break;
 
     case enemy_state::STRIKE:
-        _bg.set_item(*strike_poses[int(current_attack().id)]);
+        _set_pose(*strike_poses[int(current_attack().id)]);
         break;
 
     default:
-        _bg.set_item(bn::regular_bg_items::enemy_idle);
+        _set_pose(bn::regular_bg_items::enemy_idle);
         break;
     }
 }
@@ -261,10 +312,83 @@ void enemy::_start_sequence()
     for(int index = 0; index < count; ++index)
     {
         attack_step step;
-        step.id = _attack_pool[_random.get_int(_attack_pool.size())];
-        step.heavy = _random.get_int(100) < tuning::heavy_chance_percent;
+        step.id = _pick_attack();
+        step.heavy = _random.get_int(100) < _tier.heavy_percent;
+
+        if(_random.get_int(100) < _tier.feint_percent)
+        {
+            step.feint = true;
+            step.feint_from = _pick_feint(step.id);
+        }
+
         _sequence.push_back(step);
     }
+}
+
+attack_id enemy::_pick_attack()
+{
+    // Weighted by the type's preferences.
+    int roll = _random.get_int(_attack_pool_weight);
+
+    for(attack_id id : _attack_pool)
+    {
+        roll -= _type.attack_weights[int(id)];
+
+        if(roll < 0)
+        {
+            return id;
+        }
+    }
+
+    return _attack_pool.back();
+}
+
+void enemy::_set_pose(const bn::regular_bg_item& pose)
+{
+    _bg.set_item(pose);
+
+    if(const bn::bg_palette_item* palette = type_palettes[_type.palette])
+    {
+        _bg.set_palette(*palette);
+    }
+
+    // The palette may be new, so re-apply whatever fade is wanted this frame.
+    _fade = -1;
+}
+
+attack_id enemy::_pick_feint(attack_id real)
+{
+    // Prefer a fake that needs a different dodge, so committing early gets punished.
+    bn::vector<attack_id, int(attack_id::COUNT)> fakes;
+    int real_dodges = attack_type_of(real).dodge_answers;
+
+    for(attack_id id : _attack_pool)
+    {
+        if(id != real && ! (attack_type_of(id).dodge_answers & real_dodges))
+        {
+            fakes.push_back(id);
+        }
+    }
+
+    if(fakes.empty())
+    {
+        for(attack_id id : _attack_pool)
+        {
+            if(id != real)
+            {
+                fakes.push_back(id);
+            }
+        }
+    }
+
+    return fakes.empty() ? real : fakes[_random.get_int(fakes.size())];
+}
+
+void enemy::_show_windup(attack_id id, bool heavy)
+{
+    const attack_type& type = attack_type_of(id);
+    _set_pose(*windup_poses[int(id)]);
+    _place_trail(type.swing_from, type.swing_to, heavy ? trail_heavy_frame : trail_normal_frame);
 }
 
 void enemy::_place_trail(bn::fixed_point from, bn::fixed_point to, int frame)
@@ -281,7 +405,10 @@ void enemy::_place_trail(bn::fixed_point from, bn::fixed_point to, int frame)
 
 void enemy::_update_effects()
 {
-    bool windup_flash = _state == enemy_state::WINDUP && _state_frames < tuning::telegraph_start_flash;
+    // A feint's fake never glows red; the real swing does after the switch.
+    bool windup = _state == enemy_state::WINDUP;
+    bool showing_heavy = windup && current_attack().heavy && (! current_attack().feint || _feint_switched);
+    bool windup_flash = windup && _state_frames - _phase_start < tuning::telegraph_start_flash;
     bool reel_flash = _state == enemy_state::STAGGERED && _state_frames < tuning::enemy_stagger_flash;
     bool hit_flash = _hit_frames > tuning::enemy_hit_frames - tuning::enemy_hit_flash;
 
@@ -312,11 +439,17 @@ void enemy::_update_effects()
     }
     else if(windup_flash)
     {
-        fade = current_attack().heavy ? FADE_FLASH_RED : FADE_FLASH_WHITE;
+        fade = showing_heavy ? FADE_FLASH_RED : FADE_FLASH_WHITE;
+    }
+    else if(showing_heavy)
+    {
+        // Unblockable: pulse red for the whole wind-up so it can't be missed.
+        fade = (_state_frames / tuning::heavy_glow_pulse) % 2 ? FADE_GLOW_LOW : FADE_GLOW_HIGH;
     }
     else if(open_dim)
     {
-        fade = FADE_DIM;
+        fade = _open_kind == open_kind::SUPER ? FADE_SUPER :
+               _open_kind == open_kind::FROZEN ? FADE_FROZEN : FADE_DIM;
     }
 
     if(fade != _fade)
@@ -334,8 +467,24 @@ void enemy::_update_effects()
             palette.set_fade(bn::colors::red, bn::fixed(0.5));
             break;
 
+        case FADE_GLOW_LOW:
+            palette.set_fade(bn::colors::red, bn::fixed(0.15));
+            break;
+
+        case FADE_GLOW_HIGH:
+            palette.set_fade(bn::colors::red, bn::fixed(0.35));
+            break;
+
         case FADE_DIM:
             palette.set_fade(bn::colors::black, bn::fixed(0.3));
+            break;
+
+        case FADE_SUPER:
+            palette.set_fade(bn::color(31, 24, 4), bn::fixed(0.35));
+            break;
+
+        case FADE_FROZEN:
+            palette.set_fade(bn::color(16, 26, 31), bn::fixed(0.5));
             break;
 
         default:
@@ -355,7 +504,8 @@ void enemy::_update_effects()
     }
     else if(_hit_frames > 0)
     {
-        shake_x = (_hit_frames / 2) % 2 ? tuning::enemy_hit_shake : -tuning::enemy_hit_shake;
+        int shake = _hit_finisher ? tuning::combo_finisher_shake : tuning::enemy_hit_shake;
+        shake_x = (_hit_frames / 2) % 2 ? shake : -shake;
     }
 
     int slump_y = _state == enemy_state::OPEN ? tuning::enemy_open_slump : 0;
@@ -382,7 +532,8 @@ void enemy::_update_trail()
 
     if(_state == enemy_state::WINDUP)
     {
-        visible_dots = 1 + (_state_frames * trail_dots) / _state_length;
+        // Restarts when a feint switches to the real swing.
+        visible_dots = 1 + ((_state_frames - _phase_start) * trail_dots) / (_state_length - _phase_start);
 
         int to_impact = frames_to_impact();
 

@@ -2,7 +2,7 @@
 
 A Game Boy Advance duel game inspired by the first Infinity Blade, built with [Butano](https://github.com/GValiente/butano).
 
-Milestone 1 (the combat prototype) is complete: one enemy, dodge, block, parry, openings, HP and a debug overlay. The design lives in `docs/`.
+Milestones 1 and 2 are complete: the full combat kit, with dodge, block and diagonal-aware parries; unblockable attacks, feints and rising slashes; three enemy types (Knight, Brute, Duelist) across four difficulty tiers; combos, a super meter and ring magic. The design lives in `docs/`.
 
 ## Building
 
@@ -24,9 +24,19 @@ This produces `infinity_gblade.gba`. The folder path must not contain spaces, si
 | --- | --- |
 | D-pad | Dodge left/right, duck (down), hop (up) |
 | A (hold) | Block |
-| B + direction | Parry during an enemy wind-up; slash during an opening |
-| Start | New duel after a win or loss |
-| Select | Toggle the debug overlay (L/R switch enemy tier while it's shown) |
+| B + direction | Parry during an enemy wind-up (diagonals for slashes); slash during an opening |
+| L | Super, when the gold meter is full |
+| R (hold) + D-pad pattern | Cast the equipped ring's spell; the enemy slows while you draw |
+| Start | Pause; new duel after a win or loss |
+
+Debug controls:
+
+| Input | Action |
+| --- | --- |
+| Tap Select | Toggle the debug overlay |
+| Select + L / R / A | Next enemy tier / enemy type / ring (restarts the duel) |
+| Select + B | Refill super meter and magic charges |
+| Start (overlay shown) | Toggle invincibility |
 
 ## Tuning and art
 

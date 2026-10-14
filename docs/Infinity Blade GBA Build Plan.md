@@ -49,6 +49,20 @@ The combat prototype breaks into ten tasks, in build order.
 - [x] HUD for player HP, shield pips and enemy HP; win and lose screens
 - [x] Debug overlay showing the current enemy state and frame count, toggled with Select
 
+## Milestone 2 tasks
+
+The full combat kit breaks into nine tasks, in build order (planned Oct 13).
+
+- [x] Unblockable (heavy) attacks: red glow and trail, per-tier chance, blocking breaks the shield
+- [x] Feints: a wind-up that switches into a different swing partway through, per-tier chance
+- [x] Rising slashes for late enemies: new poses, parry B + down-left or down-right, dodge away from the starting side
+- [x] Three enemy types (Knight, Brute, Duelist) with distinct move sets, HP and speed; tiers scale on top
+- [x] Combos: direction sequences inside one opening add bonus damage
+- [x] Super meter: parries and landed hits fill it; L stuns the enemy for 3 seconds with double damage
+- [x] Magic via rings: R + D-pad pattern casts Fire, Ice, Heal or Shock, with limited charges per duel
+- [x] HUD for super meter, magic charges and combo feedback; Start pauses
+- [x] Debug overlay switches for enemy type and ring; tuning pass for the exit test
+
 ## Placeholder art
 
 The prototype uses simple shapes so combat can be judged before any real pixel art exists.

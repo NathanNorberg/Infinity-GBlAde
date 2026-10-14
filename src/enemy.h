@@ -11,6 +11,14 @@
 namespace igb
 {
 
+// How an opening looks: dimmed (earned by defense), gold (super) or blue (frozen by Ice).
+enum class open_kind
+{
+    NORMAL,
+    SUPER,
+    FROZEN
+};
+
 enum class enemy_state
 {
     IDLE,
@@ -24,7 +32,8 @@ enum class enemy_state
 
 // Enemy state machine. Runs sequences of 1 to tier.max_attacks attacks:
 // IDLE -> (WINDUP -> STRIKE -> RECOVER) per attack -> IDLE.
-// The duel scene can interrupt with reel() after a parry and open() to grant an opening.
+// The duel scene can interrupt with reel() after a parry, interrupt() for a Shock, and
+// open() to grant an opening.
 //
 // Impact timing: an attack lands on the first frame of STRIKE. During WINDUP,
 // frames_to_impact() counts down to 1 on the last wind-up frame; on the impact frame
@@ -33,18 +42,23 @@ class enemy
 {
 
 public:
-    explicit enemy(const tuning::enemy_tier& tier);
+    // tier is the combined tier + type settings (see tuning::combine).
+    enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type);
 
     void update();
 
     // Parried mid-sequence: reel for a moment, then throw the next attack.
     void reel(int frames);
 
-    // Drops the guard for an opening; when it ends the guard comes back up.
-    void open(int frames);
+    // Knocked out of his sequence: reel, then start a new one (Shock).
+    void interrupt(int frames);
 
-    // A hero slash during an opening. direction is the dir:: flags of the slash.
-    void take_hit(int direction, int damage);
+    // Drops the guard for an opening; when it ends the guard comes back up.
+    void open(int frames, open_kind kind = open_kind::NORMAL);
+
+    // A hero slash during an opening. direction is the dir:: flags of the slash; a finisher
+    // (the slash that completes a combo) gets a red streak and a harder shake.
+    void take_hit(int direction, int damage, bool finisher = false);
 
     // Duel over: defeat() when out of HP, stand_down() when the hero has fallen.
     void defeat();
@@ -104,28 +118,44 @@ public:
         return _hp;
     }
 
+    [[nodiscard]] int max_hp() const
+    {
+        return _type.max_hp;
+    }
+
 private:
     static constexpr int trail_dots = 8;
 
-    const tuning::enemy_tier& _tier;
+    tuning::enemy_tier _tier;
+    const tuning::enemy_type& _type;
     bn::regular_bg_ptr _bg;
     bn::vector<bn::sprite_ptr, trail_dots> _trail;
     bn::random _random;
     bn::vector<attack_step, tuning::sequence_max_attacks> _sequence;
     bn::vector<attack_id, int(attack_id::COUNT)> _attack_pool;
+    int _attack_pool_weight = 0;
     int _sequence_index = 0;
     enemy_state _state = enemy_state::IDLE;
     int _state_frames = 0;
     int _state_length = 0;
-    int _hp = tuning::enemy_max_hp;
+    int _hp;
     int _hit_frames = 0;           // Counts down after a hero slash lands
+    bool _hit_finisher = false;
+    open_kind _open_kind = open_kind::NORMAL;
+    bool _reel_continues = true;   // After STAGGERED: true = next attack, false = new sequence
     bool _impact = false;
     bool _sequence_finished = false;
     int _fade = 0;
+    int _phase_start = 0;          // Wind-up frame where the current pose began (moves on a feint switch)
+    bool _feint_switched = false;
 
     void _advance();
     void _enter(enemy_state state, int length);
     void _start_sequence();
+    [[nodiscard]] attack_id _pick_feint(attack_id real);
+    void _show_windup(attack_id id, bool heavy);
+    void _set_pose(const bn::regular_bg_item& pose);
+    [[nodiscard]] attack_id _pick_attack();
     void _place_trail(bn::fixed_point from, bn::fixed_point to, int frame);
     void _update_effects();
     void _update_trail();

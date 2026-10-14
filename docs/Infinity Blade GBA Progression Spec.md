@@ -83,6 +83,7 @@ Nearly everything carries over between generations; only the run itself resets.
 
 - **Death:** losing any duel ends the run and costs 10% of carried gold (a starting value to tune). A short cutscene shows the next generation getting up and walking down the path to the gate. The hero uses the same sprite every generation.
 - **God King scaling:** fixed at level 50 for the first cycle and never adjusts to the player; only leveling and gear close the gap. Each win raises him for the next cycle.
+- **God King difficulty:** he must feel like a brutal boss. No one should beat him on the first bloodline without exceptional reflexes, and that's intended: do not soften his wind-ups, feints or unblockables to make a fresh hero competitive (decided Oct 13). Testing uses the debug overlay's invincibility switch instead.
 - **Victory:** beating the God King shows a short ending, then starts a new, harder cycle with the same hero (new game plus).
 
 ## Save data

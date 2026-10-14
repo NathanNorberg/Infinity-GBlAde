@@ -4,6 +4,7 @@
 #include "bn_fixed_point.h"
 #include "bn_sprite_ptr.h"
 
+#include "magic.h"
 #include "tuning.h"
 
 namespace igb
@@ -20,6 +21,8 @@ enum class hero_state
     ATTACK,
     HURT,
     STAGGERED,  // Shield broke: can't act
+    CHANNEL,    // R held: entering the ring's pattern
+    CAST,       // Spell fired: busy for a moment
     DEFEATED    // Out of HP: sinks out of view
 };
 
@@ -55,6 +58,60 @@ public:
 
     // Ends the parry commit early so the hero can act in the opening.
     void parry_succeeded();
+
+    // Brief white flash, e.g. when the super fires.
+    void flash();
+
+    void heal(int amount);
+
+    // The ring's spell; R + its pattern casts it.
+    void set_spell(const spell& spell)
+    {
+        _spell = &spell;
+    }
+
+    // Set each frame by the duel scene: R only starts a cast while charges remain.
+    void set_magic_ready(bool ready)
+    {
+        _magic_ready = ready;
+    }
+
+    // Set each frame by the duel scene: debug shortcuts (Select held) shouldn't move the hero.
+    void set_input_suppressed(bool suppressed)
+    {
+        _input_suppressed = suppressed;
+    }
+
+    // True on the frame R starts drawing a spell (the charge is spent here).
+    [[nodiscard]] bool channel_started() const
+    {
+        return _channel_started;
+    }
+
+    // Steps of the spell pattern entered so far, while drawing.
+    [[nodiscard]] int spell_progress() const
+    {
+        return _spell_progress;
+    }
+
+    // True on the frame a wrong direction resets the spell pattern.
+    [[nodiscard]] bool spell_mistake() const
+    {
+        return _spell_mistake;
+    }
+
+    // True on the frame a spell's pattern completes.
+    [[nodiscard]] bool cast_started() const
+    {
+        return _cast_started;
+    }
+
+    // The super can fire unless the hero is hurt, staggered, defeated or locked out.
+    [[nodiscard]] bool can_use_super() const
+    {
+        return ! _input_locked && _state != hero_state::HURT && _state != hero_state::STAGGERED &&
+               _state != hero_state::DEFEATED;
+    }
 
     // Set each frame by the duel scene: while the enemy is open, B + direction slashes
     // instead of parrying.
@@ -110,6 +167,13 @@ private:
     bool _enemy_open = false;
     bool _attack_started = false;
     bool _input_locked = false;
+    bool _input_suppressed = false;
+    bool _magic_ready = false;
+    bool _cast_started = false;
+    bool _channel_started = false;
+    bool _spell_mistake = false;
+    const spell* _spell = nullptr;
+    int _spell_progress = 0;
     int _hp = tuning::player_max_hp;
     int _evade_cooldown = 0;
     int _shown_frame = 0;
@@ -126,6 +190,7 @@ private:
     void _start_attack(int direction);
     void _start_chord(int direction);
     void _settle_parry_direction();
+    void _update_channel();
     void _update_shield_regen();
     [[nodiscard]] bn::fixed _evade_amount() const;
     void _update_sprite();

@@ -37,7 +37,7 @@ The dodge rule is simple: move away from where the blade will land. For diagonal
 | Overhead chop | Weapon raised straight up | Left or right | B + up | Yes |
 | Low sweep | Weapon dropped low | Up (hop) | B + down | Yes |
 | Thrust | Weapon pulled back at waist | Left or right | Not parryable | Yes |
-| Rising slash (late game, final boss) | Weapon dropped low to one side | Toward the side it starts on (to confirm in play-testing) | B + down-left or B + down-right | Yes |
+| Rising slash (late game, final boss) | Weapon dropped low to one side | Away from the side it starts on (changed after play-testing, Oct 13) | B + down-left or B + down-right | Yes |
 | Heavy / unblockable | Glow or flash on wind-up | Per base swing | Not parryable | No, breaks shield |
 
 Enemies chain 1 to 4 attacks per sequence before an opening. Later enemies add feints (a wind-up that cancels into a different swing).
@@ -97,8 +97,9 @@ Telegraphs come from the enemy's upper body and weapon so the hero never hides t
 - **Directions:** dodges use 4 directions. Parries use 4 directions plus the diagonals for slashes. Diagonal slashes start with hall guards, and rising slashes come in the late game.
 - **Parry aim:** point toward where the blade comes from.
 - **Version 1 scope:** the full bloodline loop (climb, God King, death, next generation with gear and levels carried over).
-- **L button:** super meter.
-- **Magic:** included in version 1.
+- **L button:** super meter. A full meter stuns the enemy instantly, even mid-wind-up, cancelling his sequence; he stays open for 3 seconds and slashes deal double damage (decided Oct 13).
+- **Magic:** included in version 1. Rings offer four spells: Fire (direct damage), Ice (freezes the enemy for about 2 seconds, acting as an opening), Heal (restores about 30% HP) and Shock (the longest stagger, less damage) (decided Oct 13). Casting: pressing R spends a charge and slows the enemy to about 20% speed for up to 5 seconds while the pattern is drawn; releasing R or running out of time fizzles the spell with the charge spent. Every spell that fires knocks the enemy out of his sequence (Ice as an opening, the others as a short stagger), so casting is never the ultimate risk; cast during an opening, the opening keeps running (decided after play-testing, Oct 13).
+- **Enemy types:** milestone 2 builds three: Knight (balanced), Brute (slow, high HP, hits hard, more overheads and unblockables) and Duelist (fast, low HP, favors slashes and thrusts, feints). Tiers scale speed and damage on top of the type (decided Oct 13).
 - **Art style:** pixel art drawn at GBA scale.
 - **Run length:** about 10 duels per bloodline run, varying by path, modeled on the original's castle climb.
 

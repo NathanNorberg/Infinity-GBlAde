@@ -169,6 +169,40 @@ ENEMY_PALETTE = [
 ENEMY_TURN = 3
 
 
+# Palette swaps for the other enemy types; same color slots as ENEMY_PALETTE.
+ENEMY_TYPE_PALETTES = {
+    "brute": [
+        (255, 0, 255),    # 0 transparent
+        (12, 6, 4),       # 1 outline
+        (74, 46, 26),     # 2 armor dark (bronze)
+        (128, 86, 46),    # 3 armor mid
+        (188, 140, 78),   # 4 armor light
+        (255, 120, 20),   # 5 visor glow (orange)
+        (150, 150, 156),  # 6 blade (dull iron)
+        (210, 210, 214),  # 7 blade edge
+        (70, 40, 26),     # 8 leather
+        (120, 120, 128),  # 9 trim (iron)
+    ],
+    "duelist": [
+        (255, 0, 255),    # 0 transparent
+        (6, 6, 14),       # 1 outline
+        (28, 34, 70),     # 2 armor dark (navy)
+        (52, 66, 124),    # 3 armor mid
+        (104, 124, 196),  # 4 armor light
+        (60, 220, 255),   # 5 visor glow (cyan)
+        (196, 208, 224),  # 6 blade
+        (250, 252, 255),  # 7 blade edge
+        (60, 34, 50),     # 8 leather
+        (230, 190, 70),   # 9 trim (gold)
+    ],
+}
+
+
+def make_enemy_type_palettes():
+    """Returns [(name, image)]: tiny images that only carry a palette (Butano bg_palette assets)."""
+    return [("enemy_palette_" + name, Image(8, 8, palette)) for name, palette in ENEMY_TYPE_PALETTES.items()]
+
+
 def draw_enemy_body(img, cx):
     t = ENEMY_TURN
 
@@ -242,6 +276,10 @@ ENEMY_SWORD_POSES = [
     ("st_sweep", (38, 34), (94, 54)),
     ("wu_thrust", (32, 8), (-2, 14)),          # Thrust: pulled back at the waist
     ("st_thrust", (0, -2), (0, 34)),
+    ("wu_rise_l", (-32, 24), (-40, 80)),       # Rising /: dropped low left, blade pointing straight down
+    ("st_rise_l", (34, -50), (66, -78)),       # ...finishes high right
+    ("wu_rise_r", (32, 24), (40, 80)),         # Rising \: dropped low right
+    ("st_rise_r", (-34, -50), (-66, -78)),
 ]
 
 
@@ -443,7 +481,8 @@ PIP_PALETTE = [
 
 # ---------------------------------------------------------------------------------------------
 # HP bar segment: 8x8 HUD sprite. Frames 0..8 are the player bar (green) filled 0..8 px from
-# the left; frames 9..17 are the enemy bar (red) filled the same way.
+# the left; frames 9..17 are the enemy bar (red) and 18..26 the super meter (gold), filled
+# the same way.
 # ---------------------------------------------------------------------------------------------
 
 BAR_PALETTE = [
@@ -454,14 +493,17 @@ BAR_PALETTE = [
     (150, 240, 150),  # 4 player highlight
     (200, 40, 40),    # 5 enemy fill
     (255, 140, 120),  # 6 enemy highlight
+    (230, 170, 30),   # 7 super fill
+    (255, 240, 140),  # 8 super highlight
 ]
 
 BAR_SEGMENT_FILLS = 9
 
 
 def make_hp_bar():
-    img = Image(8, 8 * BAR_SEGMENT_FILLS * 2, BAR_PALETTE)
-    for bar, (fill, shine) in enumerate(((3, 4), (5, 6))):
+    bars = ((3, 4), (5, 6), (7, 8))
+    img = Image(8, 8 * BAR_SEGMENT_FILLS * len(bars), BAR_PALETTE)
+    for bar, (fill, shine) in enumerate(bars):
         for filled in range(BAR_SEGMENT_FILLS):
             oy = (bar * BAR_SEGMENT_FILLS + filled) * 8
             img.rect(0, oy, 8, oy + 1, 1)
@@ -469,6 +511,88 @@ def make_hp_bar():
             img.rect(0, oy + 1, 8, oy + 7, 2)
             img.rect(0, oy + 1, filled, oy + 7, fill)
             img.rect(0, oy + 1, filled, oy + 2, shine)
+    return img
+
+
+# ---------------------------------------------------------------------------------------------
+# Input arrows: 16x16 HUD sprite for spell patterns and combos. 12 frames stacked vertically:
+# up, down, left, right dim (0..3), lit (4..7) and mistake red (8..11).
+# ---------------------------------------------------------------------------------------------
+
+ARROW_PALETTE = [
+    (255, 0, 255),    # 0 transparent
+    (8, 8, 16),       # 1 outline
+    (70, 76, 100),    # 2 dim fill
+    (110, 118, 150),  # 3 dim highlight
+    (240, 190, 40),   # 4 lit fill (gold)
+    (255, 250, 190),  # 5 lit highlight
+    (220, 40, 40),    # 6 mistake fill
+    (255, 150, 140),  # 7 mistake highlight
+]
+
+
+def arrow_up_mask():
+    """16x16 grid of booleans for an up arrow: triangle head over a stem."""
+    mask = [[False] * 16 for _ in range(16)]
+    for y in range(2, 9):
+        half = y - 2
+        for x in range(8 - half - 1, 8 + half + 1):
+            mask[y][x] = True
+    for y in range(9, 14):
+        for x in range(6, 10):
+            mask[y][x] = True
+    return mask
+
+
+def make_arrows():
+    up = arrow_up_mask()
+    rotations = {
+        "up": lambda x, y: up[y][x],
+        "down": lambda x, y: up[15 - y][x],
+        "left": lambda x, y: up[x][y],
+        "right": lambda x, y: up[15 - x][y],
+    }
+    img = Image(16, 16 * 12, ARROW_PALETTE)
+    for state, (fill, shine) in enumerate(((2, 3), (4, 5), (6, 7))):
+        for index, direction in enumerate(("up", "down", "left", "right")):
+            oy = (state * 4 + index) * 16
+            inside = rotations[direction]
+            for y in range(16):
+                for x in range(16):
+                    if inside(x, y):
+                        img.set(x, oy + y, fill)
+            # Highlight the upper-left edge of the shape.
+            for y in range(16):
+                for x in range(16):
+                    if inside(x, y) and (x == 0 or not inside(x - 1, y) or y == 0 or not inside(x, y - 1)):
+                        img.set(x, oy + y, shine)
+            img.outline(1, (0, oy, 16, oy + 16))
+    return img
+
+
+# ---------------------------------------------------------------------------------------------
+# Magic charge orb: 8x8 HUD sprite, 2 frames: full and empty.
+# ---------------------------------------------------------------------------------------------
+
+ORB_PALETTE = [
+    (255, 0, 255),    # 0 transparent
+    (6, 8, 20),       # 1 outline
+    (40, 120, 230),   # 2 full fill
+    (170, 230, 255),  # 3 full highlight
+    (40, 42, 56),     # 4 empty fill
+]
+
+
+def make_charge_orb():
+    img = Image(8, 16, ORB_PALETTE)
+    for frame, (fill, shine) in enumerate(((2, 3), (4, 4))):
+        oy = frame * 8
+        img.rect(2, oy + 0, 6, oy + 8, 1)
+        img.rect(0, oy + 2, 8, oy + 6, 1)
+        img.rect(1, oy + 1, 7, oy + 7, 1)
+        img.rect(2, oy + 1, 6, oy + 7, fill)
+        img.rect(1, oy + 2, 7, oy + 6, fill)
+        img.rect(2, oy + 2, 4, oy + 4, shine)
     return img
 
 
@@ -531,15 +655,21 @@ def main():
     telegraph = make_telegraph()
     shield_pip = make_shield_pip()
     hp_bar = make_hp_bar()
+    arrows = make_arrows()
+    charge_orb = make_charge_orb()
 
     arena.save_bmp(os.path.join(GRAPHICS_DIR, "arena.bmp"))
     for name, img in enemy_poses:
         img.save_bmp(os.path.join(GRAPHICS_DIR, "enemy_" + name + ".bmp"))
+    for name, img in make_enemy_type_palettes():
+        img.save_bmp(os.path.join(GRAPHICS_DIR, name + ".bmp"))
     hero.save_bmp(os.path.join(GRAPHICS_DIR, "hero.bmp"))
     telegraph.save_bmp(os.path.join(GRAPHICS_DIR, "telegraph.bmp"))
     shield_pip.save_bmp(os.path.join(GRAPHICS_DIR, "shield_pip.bmp"))
     hp_bar.save_bmp(os.path.join(GRAPHICS_DIR, "hp_bar.bmp"))
-    print("Wrote arena, %d enemy poses, hero, telegraph, shield pip and HP bar to graphics/" % len(enemy_poses))
+    arrows.save_bmp(os.path.join(GRAPHICS_DIR, "arrows.bmp"))
+    charge_orb.save_bmp(os.path.join(GRAPHICS_DIR, "charge_orb.bmp"))
+    print("Wrote arena, %d enemy poses, hero, telegraph and HUD sprites to graphics/" % len(enemy_poses))
 
     if "--preview" in sys.argv:
         write_preview(sys.argv[sys.argv.index("--preview") + 1], arena, enemy_poses, hero)

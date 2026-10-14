@@ -33,7 +33,8 @@ namespace
         FLASH_NONE,
         FLASH_HURT,
         FLASH_BLOCK,
-        FLASH_STAGGER
+        FLASH_STAGGER,
+        FLASH_CHANNEL   // Blue glow while drawing a spell
     };
 
     [[nodiscard]] bool is_evade(hero_state state)
@@ -76,6 +77,9 @@ hero::hero() :
 void hero::update()
 {
     _attack_started = false;
+    _cast_started = false;
+    _channel_started = false;
+    _spell_mistake = false;
     ++_state_frames;
 
     if(_evade_cooldown > 0)
@@ -135,6 +139,17 @@ void hero::update()
         }
         break;
 
+    case hero_state::CHANNEL:
+        _update_channel();
+        break;
+
+    case hero_state::CAST:
+        if(_state_frames >= tuning::magic_cast_frames)
+        {
+            _enter(hero_state::IDLE);
+        }
+        break;
+
     case hero_state::HURT:
         if(_state_frames >= tuning::hero_hurt_frames)
         {
@@ -153,7 +168,7 @@ void hero::update()
         break;
     }
 
-    if(_state == hero_state::IDLE && ! _input_locked)
+    if(_state == hero_state::IDLE && ! _input_locked && ! _input_suppressed)
     {
         _read_input();
     }
@@ -186,6 +201,54 @@ void hero::absorb_block()
     if(_shield_pips <= 0)
     {
         break_shield();
+    }
+}
+
+void hero::flash()
+{
+    _block_flash = tuning::block_flash_frames;
+}
+
+void hero::heal(int amount)
+{
+    _hp = _hp + amount < tuning::player_max_hp ? _hp + amount : tuning::player_max_hp;
+}
+
+void hero::_update_channel()
+{
+    // Releasing R or running out of time fizzles the spell.
+    if(! bn::keypad::r_held() || _state_frames >= tuning::magic_input_frames || ! _spell)
+    {
+        _enter(hero_state::IDLE);
+        return;
+    }
+
+    int direction = bn::keypad::left_pressed() ? dir::LEFT :
+                    bn::keypad::right_pressed() ? dir::RIGHT :
+                    bn::keypad::up_pressed() ? dir::UP :
+                    bn::keypad::down_pressed() ? dir::DOWN : dir::NONE;
+
+    if(direction == dir::NONE)
+    {
+        return;
+    }
+
+    if(direction == _spell->steps[_spell_progress])
+    {
+        ++_spell_progress;
+    }
+    else
+    {
+        // A wrong direction restarts the pattern (or starts it, if it's the first step).
+        _spell_progress = direction == _spell->steps[0] ? 1 : 0;
+        _spell_mistake = true;
+    }
+
+    if(_spell_progress == _spell->length)
+    {
+        _cast_started = true;
+        _block_flash = tuning::block_flash_frames;
+        _enter(hero_state::CAST);
     }
 }
 
@@ -244,6 +307,15 @@ void hero::_enter(hero_state state)
 
 void hero::_read_input()
 {
+    // R starts drawing a spell while charges remain.
+    if(bn::keypad::r_pressed() && _magic_ready)
+    {
+        _spell_progress = 0;
+        _channel_started = true;
+        _enter(hero_state::CHANNEL);
+        return;
+    }
+
     // Block takes priority over dodging while A is held, as long as the shield has pips.
     if(bn::keypad::a_held() && _shield_pips > 0)
     {
@@ -485,6 +557,10 @@ void hero::_update_sprite()
     {
         flash = FLASH_STAGGER;
     }
+    else if(_state == hero_state::CHANNEL)
+    {
+        flash = FLASH_CHANNEL;
+    }
 
     if(flash != _flash)
     {
@@ -499,6 +575,10 @@ void hero::_update_sprite()
 
         case FLASH_BLOCK:
             palette.set_fade(bn::colors::white, bn::fixed(0.5));
+            break;
+
+        case FLASH_CHANNEL:
+            palette.set_fade(bn::color(8, 16, 31), bn::fixed(0.35));
             break;
 
         case FLASH_STAGGER:
