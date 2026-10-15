@@ -7,7 +7,7 @@ namespace igb
 {
 
 // A direction sequence that, slashed in order inside one opening, adds bonus damage to the
-// final hit. Weapons bring their own combos in milestone 3.
+// final hit. Each weapon brings its own (see include/item_roster.h).
 struct combo
 {
     static constexpr int max_steps = 5;
@@ -17,9 +17,6 @@ struct combo
     int length;
     int bonus_damage;
 };
-
-// The hero's starting sword.
-constexpr combo starting_combo = { "Cross cut", { dir::LEFT, dir::RIGHT, dir::UP }, 3, tuning::combo_bonus_damage };
 
 // Follows slashes inside one opening and reports when the combo completes.
 class combo_tracker
@@ -72,10 +69,6 @@ private:
     const combo& _combo;
     int _progress = 0;
 };
-
-static_assert(starting_combo.length >= 2 && starting_combo.length <= combo::max_steps);
-static_assert((starting_combo.length - 1) * tuning::player_attack_cooldown < tuning::opening_after_dodge,
-              "The combo must fit inside the shortest opening");
 
 }
 

@@ -63,6 +63,22 @@ The full combat kit breaks into nine tasks, in build order (planned Oct 13).
 - [x] HUD for super meter, magic charges and combo feedback; Start pauses
 - [x] Debug overlay switches for enemy type and ring; tuning pass for the exit test
 
+## Milestone 3 tasks
+
+The progression core breaks into eleven tasks, in build order (planned Oct 13).
+
+- [x] Damage rebalance: raise base numbers (starting sword about 20 per slash, enemy HP scaled to match) so stat points give small, steady gains
+- [x] Hero profile: level, XP, stats (Health, Attack, Shield, Magic), unspent points and gold, applied to the duel
+- [x] Item roster as data: 6 to 8 items per slot with price, XP multiplier, level unlock and stats; drafted for approval before it's built
+- [x] Equipped items apply in the duel: weapon damage, element and combo; shield pips and parry window; armor and helmet reduction; ring spell and charges
+- [x] Duel rewards and results screen: XP and gold by enemy tier, perfect-sequence and no-block bonuses, item XP
+- [x] Leveling and character screen: XP curve, level cap 40, spending stat points
+- [x] Item mastery: item XP thresholds by price, first-mastery bonus stat point, mastered items stop granting bonus XP
+- [x] Gate hub and scene flow: title, hub (Fight, Character, Equipment, Shop), duel, results; Fight climbs a difficulty ladder until the castle exists
+- [x] Equipment screen and shop: equip per slot, buy (level-gated), sell at 50% or 75% if mastered
+- [x] Save data: two slots plus a backup copy each, checksum, title Continue/New Game with a slot picker, autosave after duels and shop visits
+- [x] Debug grants (XP, gold, items, save reset) and the exit test
+
 ## Placeholder art
 
 The prototype uses simple shapes so combat can be judged before any real pixel art exists.
@@ -76,6 +92,8 @@ The prototype uses simple shapes so combat can be judged before any real pixel a
 | HUD | Bars and pips from solid tiles | 8×8 tiles |
 
 Final pixel art replaces these in milestone 5, keeping the same sizes and palettes so code doesn't change.
+
+**Art direction (decided Oct 15):** match the visual style of the GBA Castlevania games (Circle of the Moon, Harmony of Dissonance, Aria of Sorrow): gothic castle interiors built from dense, detailed tiles (stone, arches, candles, stained-glass colors); saturated sprites with bold, readable outlines; large, detailed enemies and bosses that dominate the screen; and an ornate HUD with a gold-framed HP bar and jewel-like icons.
 
 ## Testing and tuning
 

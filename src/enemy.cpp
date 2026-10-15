@@ -155,6 +155,11 @@ void enemy::update()
         --_hit_frames;
     }
 
+    if(_tick_flicker > 0)
+    {
+        --_tick_flicker;
+    }
+
     if(_state_frames >= _state_length)
     {
         _advance();
@@ -202,6 +207,28 @@ void enemy::take_hit(int direction, int damage, bool finisher)
                          (direction & dir::UP) ? -1 : (direction & dir::DOWN) ? 1 : 0);
     bn::fixed_point offset = step * hit_streak_half_length;
     _place_trail(body_center - offset, body_center + offset, finisher ? trail_heavy_frame : trail_normal_frame);
+}
+
+void enemy::take_damage(int damage)
+{
+    _hp = _hp > damage ? _hp - damage : 0;
+    _tick_flicker = tuning::burn_flicker_frames;
+}
+
+void enemy::extend_opening(int frames)
+{
+    if(_state == enemy_state::OPEN)
+    {
+        _state_length += frames;
+    }
+}
+
+void enemy::stun_after_opening(int frames)
+{
+    if(_state == enemy_state::OPEN)
+    {
+        _after_opening_stun = frames;
+    }
 }
 
 void enemy::defeat()
@@ -260,8 +287,17 @@ void enemy::_advance()
         }
         break;
 
-    default:    // OPEN: guard back up
-        _enter(enemy_state::IDLE, _tier.pause_between_sequences);
+    default:    // OPEN: guard back up, unless a Shock weapon left him stunned
+        if(_after_opening_stun > 0)
+        {
+            _reel_continues = false;
+            _enter(enemy_state::STAGGERED, _after_opening_stun);
+            _after_opening_stun = 0;
+        }
+        else
+        {
+            _enter(enemy_state::IDLE, _tier.pause_between_sequences);
+        }
         break;
     }
 }
@@ -436,6 +472,10 @@ void enemy::_update_effects()
     if(hit_flash || reel_flash)
     {
         fade = FADE_FLASH_WHITE;
+    }
+    else if(_tick_flicker > 0)
+    {
+        fade = FADE_GLOW_LOW;
     }
     else if(windup_flash)
     {

@@ -8,6 +8,8 @@
 
 #include "bn_regular_bg_items_arena.h"
 
+#include "item_roster.h"
+
 namespace igb
 {
 
@@ -17,23 +19,32 @@ namespace
     constexpr int arena_priority = 3;
 }
 
-duel_scene::duel_scene(debug_settings& debug) :
+duel_scene::duel_scene(debug_settings& debug, hero_profile& profile) :
     _tier(tuning::combine(*tuning::enemy_tiers[debug.tier_index], *tuning::enemy_types[debug.type_index])),
     _debug_settings(debug),
+    _profile(profile),
     _arena_bg(bn::regular_bg_items::arena.create_bg(0, 0)),
     _enemy(_tier, *tuning::enemy_types[debug.type_index]),
-    _hud(_tier.name),
-    _debug(debug),
-    _combo(starting_combo),
-    _ring(spell_id(debug.ring_index)),
+    _hero(profile),
+    _hud(_tier.name, profile.max_hp(), profile.shield_pips(), profile.magic_charges()),
+    _debug(debug, profile),
+    _combo(profile.weapon_combo()),
+    _ring(profile.ring_spell()),
+    _magic_charges(profile.magic_charges()),
     _last_outcome("-")
 {
     _arena_bg.set_priority(arena_priority);
     _hero.set_spell(spell_of(_ring));
+
+    // The title and hub dim this same arena art; make sure the duel starts at full brightness.
+    bn::bg_palette_ptr arena_palette = _arena_bg.palette();
+    arena_palette.set_fade(bn::colors::black, 0);
 }
 
-bool duel_scene::update()
+scene_id duel_scene::update()
 {
+    _result_decided = false;
+
     // Start pauses (with the debug overlay hidden, during the duel); Start again resumes.
     if(_paused)
     {
@@ -42,13 +53,14 @@ bool duel_scene::update()
             _set_paused(false);
         }
 
-        return true;
+        return scene_id::NONE;
     }
 
-    if(bn::keypad::start_pressed() && ! _debug_settings.visible && _result == result::NONE)
+    if(bn::keypad::start_pressed() && ! bn::keypad::select_held() && ! _debug_settings.visible &&
+       _result == result::NONE)
     {
         _set_paused(true);
-        return true;
+        return scene_id::NONE;
     }
 
     ++_frames;
@@ -95,6 +107,7 @@ bool duel_scene::update()
     if(enemy_moves)
     {
         _enemy.update();
+        _update_burn();
 
         // Combos and super damage only count inside one opening.
         if(_enemy.state() != enemy_state::OPEN)
@@ -116,34 +129,50 @@ bool duel_scene::update()
 
     _arena_bg.set_position(_hero.arena_nudge());
     _update_prompts();
-    _hud.update(_hero.hp(), _hero.shield_pips(), _super, _magic_charges, _enemy.hp(), _enemy.max_hp());
+    _hud.update(_hero.hp(), _hero.max_hp(), _hero.shield_pips(), _super, _magic_charges, _enemy.hp(),
+                _enemy.max_hp());
 
     if(_debug.update(_enemy, _hero, _last_outcome.c_str(), _frames, _result != result::NONE, _magic_charges))
     {
-        return false;
+        return scene_id::DUEL;
     }
 
     if(_debug.refill_requested() && _result == result::NONE)
     {
         _super = tuning::super_meter_max;
-        _magic_charges = tuning::magic_charges;
+        _magic_charges = _profile.magic_charges();
         _hud.show_popup("REFILLED");
     }
 
     if(_result == result::NONE)
     {
         _check_result();
-        return true;
+        return scene_id::NONE;
     }
 
     ++_result_frames;
 
     if(_result_frames == tuning::result_prompt_delay)
     {
-        _hud.show_prompt("Press START to duel again");
+        _hud.show_prompt(_result == result::WON ? "START: back to the gate    A: character" : "START: back to the gate");
     }
 
-    return _result_frames < tuning::result_prompt_delay || ! bn::keypad::start_pressed();
+    if(_result_frames < tuning::result_prompt_delay)
+    {
+        return scene_id::NONE;
+    }
+
+    if(bn::keypad::start_pressed())
+    {
+        return scene_id::HUB;
+    }
+
+    if(_result == result::WON && bn::keypad::a_pressed())
+    {
+        return scene_id::CHARACTER;
+    }
+
+    return scene_id::NONE;
 }
 
 void duel_scene::_update_prompts()
@@ -184,7 +213,7 @@ void duel_scene::_set_paused(bool paused)
     {
         _hud.hide_spell_prompt();
         _hud.hide_combo_hint();
-        _hud.show_pause(spell_of(_ring), _magic_charges, _combo.current());
+        _hud.show_pause(_profile.worn(item_slot::RING), _profile.worn(item_slot::WEAPON), _magic_charges);
     }
     else
     {
@@ -197,13 +226,23 @@ void duel_scene::_check_result()
     if(_enemy.hp() == 0)
     {
         _result = result::WON;
+        _result_decided = true;
         _enemy.defeat();
         _hero.lock_input();
-        _hud.show_result("VICTORY");
+        _rewards = compute_rewards(_tier, _profile, _had_perfect_sequence, _blocked);
+        apply_rewards(_rewards, _profile);
+
+        // A ladder win moves the hub's Fight to the next duel; debug-picked enemies don't count.
+        if(! _debug_settings.enemy_override)
+        {
+            _profile.ladder_step = (_profile.ladder_step + 1) % tuning::fight_ladder_length;
+        }
+        _hud.show_victory(_rewards, _profile);
     }
     else if(_hero.hp() == 0)
     {
         _result = result::LOST;
+        _result_decided = true;
         _hero.defeat();
         _enemy.stand_down();
         _hud.show_result("DEFEATED");
@@ -214,7 +253,7 @@ void duel_scene::_resolve_impact()
 {
     const attack_step& step = _enemy.current_attack();
     // Debug invincibility: hits still land (flash, stun, shield break) but cost no HP.
-    int hit_damage = _debug_settings.invincible ? 0 : damage(step, _tier);
+    int hit_damage = _debug_settings.invincible ? 0 : _profile.damage_taken(damage(step, _tier));
 
     // Frames before impact that the hero's current move started; the windows count back
     // from the impact frame.
@@ -249,7 +288,7 @@ void duel_scene::_resolve_impact()
     // than parry_window frames before impact. A miss takes the full hit.
     if(_hero.state() == hero_state::PARRY)
     {
-        if(parries(_hero.parry_direction(), step) && started <= tuning::parry_window)
+        if(parries(_hero.parry_direction(), step) && started <= _profile.parry_window())
         {
             ++_parries;
             _add_super(tuning::super_gain_parry);
@@ -289,6 +328,7 @@ void duel_scene::_resolve_impact()
     if(_hero.state() == hero_state::BLOCK)
     {
         ++_blocks;
+        _blocked = true;
 
         if(blockable(step))
         {
@@ -341,7 +381,7 @@ void duel_scene::_resolve_attack()
     }
 
     int bonus = finisher ? _combo.current().bonus_damage : 0;
-    int damage = tuning::player_slash_damage + bonus;
+    int damage = _profile.slash_damage() + bonus;
 
     if(_super_opening)
     {
@@ -354,10 +394,52 @@ void duel_scene::_resolve_attack()
 
     if(finisher)
     {
-        bn::string<16> text;
+        bn::string<20> text;
         bn::ostringstream stream(text);
         stream << "COMBO +" << bonus;
+
+        // The weapon's element triggers on the finisher.
+        switch(_profile.weapon_element())
+        {
+
+        case element::FIRE:
+            _burn_ticks_left = tuning::fire_burn_ticks;
+            _burn_tick_damage = _profile.slash_damage() * tuning::fire_burn_percent / 100 / tuning::fire_burn_ticks;
+            _burn_frames = 0;
+            stream << " FIRE";
+            break;
+
+        case element::ICE:
+            _enemy.extend_opening(tuning::ice_opening_bonus);
+            stream << " ICE";
+            break;
+
+        case element::SHOCK:
+            _enemy.stun_after_opening(tuning::shock_after_stun);
+            stream << " SHOCK";
+            break;
+
+        default:
+            break;
+        }
+
         _hud.show_popup(text.c_str());
+    }
+}
+
+void duel_scene::_update_burn()
+{
+    // Fire weapon: small ticks of damage spread evenly over the burn.
+    if(_burn_ticks_left <= 0 || _enemy.state() == enemy_state::DEFEATED)
+    {
+        return;
+    }
+
+    if(++_burn_frames >= tuning::fire_burn_frames / tuning::fire_burn_ticks)
+    {
+        _burn_frames = 0;
+        --_burn_ticks_left;
+        _enemy.take_damage(_burn_tick_damage);
     }
 }
 
@@ -400,24 +482,27 @@ void duel_scene::_cast_spell()
     {
 
     case spell_id::FIRE:
-        if(! open)
         {
-            _enemy.interrupt(tuning::fire_stagger_frames);
-        }
+            if(! open)
+            {
+                _enemy.interrupt(tuning::fire_stagger_frames);
+            }
 
-        _enemy.take_hit(dir::UP, tuning::fire_damage, true);
-        stream << "FIRE -" << tuning::fire_damage;
+            int fire = _profile.spell_damage(tuning::fire_damage);
+            _enemy.take_hit(dir::UP, fire, true);
+            stream << "FIRE -" << fire;
+        }
         break;
 
     case spell_id::ICE:
         // Frozen: an opening.
-        _enemy.open(tuning::ice_freeze_frames, open_kind::FROZEN);
+        _enemy.open(_profile.spell_power(tuning::ice_freeze_frames), open_kind::FROZEN);
         stream << "ICE";
         break;
 
     case spell_id::HEAL:
         {
-            int amount = tuning::player_max_hp * tuning::heal_percent / 100;
+            int amount = _profile.spell_power(_hero.max_hp() * tuning::heal_percent / 100);
             _hero.heal(amount);
 
             if(! open)
@@ -430,13 +515,16 @@ void duel_scene::_cast_spell()
         break;
 
     default:    // SHOCK
-        if(! open)
         {
-            _enemy.interrupt(tuning::shock_stagger_frames);
-        }
+            if(! open)
+            {
+                _enemy.interrupt(_profile.spell_power(tuning::shock_stagger_frames));
+            }
 
-        _enemy.take_hit(dir::DOWN, tuning::shock_damage);
-        stream << "SHOCK -" << tuning::shock_damage;
+            int shock = _profile.spell_damage(tuning::shock_damage);
+            _enemy.take_hit(dir::DOWN, shock);
+            stream << "SHOCK -" << shock;
+        }
         break;
     }
 
@@ -463,6 +551,13 @@ void duel_scene::_end_sequence_tally()
 
 void duel_scene::_end_sequence(bool last_parried)
 {
+    int size = _enemy.sequence_size();
+
+    if(size >= 2 && _parries == size)
+    {
+        _had_perfect_sequence = true;
+    }
+
     if(int opening = _earned_opening(last_parried))
     {
         _enemy.open(opening);

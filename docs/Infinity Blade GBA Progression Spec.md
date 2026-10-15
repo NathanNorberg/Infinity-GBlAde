@@ -101,6 +101,13 @@ The full save fits in well under 1 KB of the cartridge's 32 KB SRAM, so two save
 
 The game saves after every duel and at every shop visit. The checksum lets it fall back to the backup copy if a save is corrupted, for example by power loss mid-write.
 
+## Decisions
+
+- **Damage scale:** base numbers rise so the stat rules stay as written: the starting sword does about 20 per slash and enemy HP scales to match, so +2 per Attack point is a small, steady gain (decided Oct 13).
+- **Between duels before the castle exists:** a gate hub menu (Fight, Character, Equipment, Shop). Fight starts the next duel on a rising difficulty ladder; milestone 4 replaces it with the castle route (decided Oct 13).
+- **Save slots:** two slots, each with a backup copy and checksum, picked from the title screen (decided Oct 13).
+- **Item roster:** the full 6 to 8 items per slot is built in milestone 3; milestone 5 adds their art and sound (decided Oct 13).
+
 ## Open questions
 
 None right now. New questions go here as they come up.

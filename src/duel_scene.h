@@ -9,6 +9,7 @@
 #include "enemy.h"
 #include "hero.h"
 #include "hud.h"
+#include "scene.h"
 
 namespace igb
 {
@@ -18,15 +19,23 @@ class duel_scene
 {
 
 public:
-    explicit duel_scene(debug_settings& debug);
+    // profile outlives the duel; rewards are written back to it later.
+    duel_scene(debug_settings& debug, hero_profile& profile);
 
-    // Returns false when the duel should restart: the player asked for a new one after
-    // a result, or picked another enemy tier in the debug overlay.
-    [[nodiscard]] bool update();
+    // Returns NONE while the duel runs, DUEL to start a fresh one (after a result, or a
+    // debug change), or CHARACTER for the character screen from the victory screen.
+    [[nodiscard]] scene_id update();
+
+    // True on the frame the duel is won or lost, so the game can autosave right away.
+    [[nodiscard]] bool result_decided() const
+    {
+        return _result_decided;
+    }
 
 private:
     tuning::enemy_tier _tier;          // This duel's tier combined with the enemy type
     const debug_settings& _debug_settings;
+    hero_profile& _profile;
     bn::regular_bg_ptr _arena_bg;
     enemy _enemy;
     hero _hero;
@@ -35,11 +44,19 @@ private:
     combo_tracker _combo;
     int _super = 0;
     spell_id _ring;
-    int _magic_charges = tuning::magic_charges;
+    int _magic_charges;
     int _slow_frames = 0;              // Counts frames while the enemy is slowed by spell drawing
     bool _slowed = false;
     bool _paused = false;
     bool _super_opening = false;       // The current opening came from the super: double damage
+    int _burn_ticks_left = 0;          // Fire weapon burn after a combo
+    int _burn_tick_damage = 0;
+    int _burn_frames = 0;
+
+    // Duel-wide records for the reward bonuses.
+    bool _had_perfect_sequence = false;
+    bool _blocked = false;
+    duel_rewards _rewards;
     bn::string<24> _last_outcome;      // Result of the last impact, for the debug overlay
     int _frames = 0;
 
@@ -51,6 +68,7 @@ private:
     };
 
     result _result = result::NONE;
+    bool _result_decided = false;
     int _result_frames = 0;
 
     // Defensive results in the current enemy sequence; they decide the opening.
@@ -65,6 +83,7 @@ private:
     void _resolve_impact();
     void _set_outcome(const char* outcome, int frames_before_impact = -1);
     void _resolve_attack();
+    void _update_burn();
     void _try_super();
     void _cast_spell();
     void _end_sequence_tally();

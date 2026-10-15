@@ -4,6 +4,7 @@
 #include "bn_fixed_point.h"
 #include "bn_sprite_ptr.h"
 
+#include "hero_profile.h"
 #include "magic.h"
 #include "tuning.h"
 
@@ -31,7 +32,8 @@ class hero
 {
 
 public:
-    hero();
+    // Max HP and shield pips come from the profile's stats.
+    explicit hero(const hero_profile& profile);
 
     void update();
 
@@ -54,6 +56,11 @@ public:
     [[nodiscard]] int hp() const
     {
         return _hp;
+    }
+
+    [[nodiscard]] int max_hp() const
+    {
+        return _max_hp;
     }
 
     // Ends the parry commit early so the hero can act in the opening.
@@ -174,12 +181,15 @@ private:
     bool _spell_mistake = false;
     const spell* _spell = nullptr;
     int _spell_progress = 0;
-    int _hp = tuning::player_max_hp;
+    int _max_hp;
+    int _hp;
+    int _max_pips;
+    int _refill_frames;
     int _evade_cooldown = 0;
     int _shown_frame = 0;
     int _flash = 0;
     int _block_flash = 0;
-    int _shield_pips = tuning::shield_pips;
+    int _shield_pips;
     int _shield_regen = 0;
 
     void _enter(hero_state state);

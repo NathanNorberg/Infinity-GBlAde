@@ -1,7 +1,8 @@
 #ifndef IGB_TUNING_H
 #define IGB_TUNING_H
 
-// Every timing window, damage value and wind-up length in one place.
+// Every timing window, damage value and wind-up length in one place. Item stats (weapon
+// damage, shield pips, armor, rings) are in include/item_roster.h.
 // All times are in frames at 60 fps. Change one value at a time while play-testing.
 // Starting values come from docs/Infinity Blade GBA Combat Spec.md.
 
@@ -50,6 +51,8 @@ struct enemy_tier
     int heavy_percent;             // Chance each attack is a heavy (unblockable) swing
     int feint_percent;             // Chance each attack opens with a fake wind-up
     bool rising_slashes;           // Throws rising slashes (late game), parried down-left/down-right
+    int xp_reward;                 // Base duel XP for beating him
+    int gold_reward;               // Gold for beating him (spec: 50 to 300 by tier)
 };
 
 // Gate guards (the first two duels) teach the four straight answers: no diagonal slashes,
@@ -57,10 +60,10 @@ struct enemy_tier
 // (about 9 to 10 hits to kill a fresh hero) since they're the learning fights. Unblockable
 // attacks and feints start with elites (the progression spec puts the first unblockables in
 // the great hall; per-area rosters in milestone 4 can refine this).
-constexpr enemy_tier tier_gate_guard = { "Gate guard", 140, 28, 70, 2, false, 80, 0, 0, false };
-constexpr enemy_tier tier_hall_guard = { "Hall guard", 115, 20, 55, 3, true, 100, 0, 0, false };
-constexpr enemy_tier tier_elite = { "Elite", 100, 16, 45, 4, true, 100, 20, 15, false };
-constexpr enemy_tier tier_god_king = { "God King", 70, 12, 35, 4, true, 100, 25, 20, true };
+constexpr enemy_tier tier_gate_guard = { "Gate guard", 140, 28, 70, 2, false, 80, 0, 0, false, 40, 50 };
+constexpr enemy_tier tier_hall_guard = { "Hall guard", 115, 20, 55, 3, true, 100, 0, 0, false, 80, 100 };
+constexpr enemy_tier tier_elite = { "Elite", 100, 16, 45, 4, true, 100, 20, 15, false, 150, 200 };
+constexpr enemy_tier tier_god_king = { "God King", 70, 12, 35, 4, true, 100, 25, 20, true, 400, 300 };
 
 // Easiest first. The debug overlay cycles through these with L.
 inline constexpr const enemy_tier* enemy_tiers[] = {
@@ -94,20 +97,22 @@ struct enemy_type
     // slash /, slash \, horizontal <, horizontal >, overhead, sweep, thrust, rising /, rising \.
     // Tier rules still apply: a tier without diagonal or rising slashes never throws them.
     int attack_weights[attack_kinds];
+
+    int reward_percent;            // Scales the tier's XP and gold (tougher types pay more)
 };
 
 // Knight: the balanced baseline.
-constexpr enemy_type type_knight = { "Knight", 150, 100, 100, 100, 100, 100, 0, 0,
-                                     { 2, 2, 2, 2, 2, 2, 2, 2, 2 } };
+constexpr enemy_type type_knight = { "Knight", 600, 100, 100, 100, 100, 100, 0, 0,
+                                     { 2, 2, 2, 2, 2, 2, 2, 2, 2 }, 100 };
 
 // Brute: slow and tough, hits hard, loves overheads and sweeps, throws more unblockables,
 // never feints, shorter chains.
-constexpr enemy_type type_brute = { "Brute", 220, 125, 130, 140, 200, 0, -1, 1,
-                                    { 1, 1, 2, 2, 5, 3, 1, 1, 1 } };
+constexpr enemy_type type_brute = { "Brute", 880, 125, 130, 140, 200, 0, -1, 1,
+                                    { 1, 1, 2, 2, 5, 3, 1, 1, 1 }, 120 };
 
 // Duelist: fast and fragile, favors slashes and thrusts, feints often, longer chains.
-constexpr enemy_type type_duelist = { "Duelist", 110, 80, 75, 80, 50, 200, 1, 2,
-                                      { 3, 3, 2, 2, 1, 1, 3, 2, 2 } };
+constexpr enemy_type type_duelist = { "Duelist", 440, 80, 75, 80, 50, 200, 1, 2,
+                                      { 3, 3, 2, 2, 1, 1, 3, 2, 2 }, 110 };
 
 // The debug overlay cycles through these with R.
 inline constexpr const enemy_type* enemy_types[] = {
@@ -116,6 +121,27 @@ inline constexpr const enemy_type* enemy_types[] = {
 
 constexpr int enemy_type_count = sizeof(enemy_types) / sizeof(enemy_types[0]);
 constexpr int first_duel_type = 0;             // Index into enemy_types
+
+// ---------------------------------------------------------------------------------------------
+// Fight ladder: the hub's Fight button climbs these duels in order (indices into enemy_tiers
+// and enemy_types). Beating the last one wraps back to the first. The castle route replaces
+// this in milestone 4.
+// ---------------------------------------------------------------------------------------------
+
+struct ladder_duel
+{
+    int tier_index;
+    int type_index;
+};
+
+inline constexpr ladder_duel fight_ladder[] = {
+    { 0, 0 }, { 0, 2 },                 // Gate: Knight, Duelist
+    { 1, 0 }, { 1, 1 }, { 1, 2 },       // Hall: Knight, Brute, Duelist
+    { 2, 0 }, { 2, 2 }, { 2, 1 },       // Elite: Knight, Duelist, Brute
+    { 3, 0 },                           // God King
+};
+
+constexpr int fight_ladder_length = sizeof(fight_ladder) / sizeof(fight_ladder[0]);
 
 // One enemy's effective settings: the tier scaled by the type, named after the type.
 constexpr enemy_tier combine(const enemy_tier& tier, const enemy_type& type)
@@ -132,6 +158,9 @@ constexpr enemy_tier combine(const enemy_tier& tier, const enemy_type& type)
 
     int feint = tier.feint_percent * type.feint_scale_percent / 100;
     result.feint_percent = feint > 100 ? 100 : feint;
+
+    result.xp_reward = tier.xp_reward * type.reward_percent / 100;
+    result.gold_reward = tier.gold_reward * type.reward_percent / 100;
 
     int max_attacks = tier.max_attacks + type.max_attacks_change;
     result.max_attacks = max_attacks < sequence_min_attacks ? sequence_min_attacks :
@@ -174,10 +203,10 @@ constexpr int enemy_parry_reel = 24;           // Enemy reels after a mid-sequen
 // Shield.
 // ---------------------------------------------------------------------------------------------
 
-constexpr int shield_pips = 4;                 // Spec: 3 to 6, from the shield item later
+constexpr int shield_pips = 4;                 // Starter shield's pips (the roster's shield sets them)
 constexpr int shield_pips_per_block = 1;
 constexpr int shield_break_stagger = 60;       // Hero can't act after the shield empties
-constexpr int shield_regen_frames = 240;       // One pip back per this many frames not blocking; 0 = off
+constexpr int shield_regen_frames = 240;       // Starter shield's refill (the roster's shield sets it)
 
 // ---------------------------------------------------------------------------------------------
 // Openings (the player's turn to attack).
@@ -190,7 +219,13 @@ constexpr int opening_after_shield_break = 180; // For enemy shields (not built 
 constexpr int opening_warning_frames = 30;     // Enemy blinks before raising the guard again
 
 constexpr int player_attack_cooldown = 15;     // Frames between slashes
-constexpr int combo_bonus_damage = 15;         // Added to the slash that completes a combo
+
+// Weapon elements, triggered when the weapon's combo completes.
+constexpr int fire_burn_percent = 200;         // Burn damage, as a share of the weapon's damage
+constexpr int fire_burn_frames = 180;          // Spread over 3 seconds...
+constexpr int fire_burn_ticks = 6;             // ...in this many ticks
+constexpr int ice_opening_bonus = 60;          // Frames added to the opening
+constexpr int shock_after_stun = 45;           // Frames he stays stunned after the opening ends
 
 // ---------------------------------------------------------------------------------------------
 // Super meter (L when full). Empties when the duel ends.
@@ -209,16 +244,16 @@ constexpr int super_damage_percent = 200;      // Slash damage during a super op
 // Pressing R spends a charge and slows the enemy while the pattern is drawn. Every spell
 // that fires knocks the enemy out of his sequence, so casting never drops the hero back into
 // a half-finished swing.
-constexpr int magic_charges = 2;               // Casts per duel
+constexpr int magic_charges = 2;               // Starter ring's charges (the roster's ring sets them)
 constexpr int magic_input_frames = 300;        // Real time to finish the pattern (5 s) before it fizzles
 constexpr int magic_slow_divisor = 5;          // While drawing, the enemy moves 1 frame in every 5 (20%)
 constexpr int magic_cast_frames = 20;          // Hero is busy casting after the pattern completes
-constexpr int fire_damage = 25;
+constexpr int fire_damage = 100;
 constexpr int fire_stagger_frames = 45;        // Enemy reels, then starts a new sequence
 constexpr int ice_freeze_frames = 120;         // Frozen enemy is open, sequence cancelled
 constexpr int heal_percent = 30;               // Of the hero's max HP
 constexpr int heal_reset_frames = 45;          // Enemy reels from the flash and resets
-constexpr int shock_damage = 10;
+constexpr int shock_damage = 40;
 constexpr int shock_stagger_frames = 90;       // Longest reset: trades damage for breathing room
 
 // ---------------------------------------------------------------------------------------------
@@ -227,7 +262,37 @@ constexpr int shock_stagger_frames = 90;       // Longest reset: trades damage f
 
 constexpr int player_max_hp = 100;
 
-constexpr int player_slash_damage = 5;
+// Hero damage runs on a larger scale than enemy damage so each Attack point (+2 per hit in the
+// progression spec) is a small, steady gain: the starting sword does 20 per slash.
+constexpr int player_slash_damage = 20;        // Starter weapon's damage (the roster's weapon sets it)
+
+// ---------------------------------------------------------------------------------------------
+// Hero stats (progression spec). Points come from levels and first-time item mastery.
+// ---------------------------------------------------------------------------------------------
+
+constexpr int level_cap = 40;
+constexpr int xp_curve_base = 100;             // XP to the next level = 100 x level^1.5
+constexpr int stat_points_per_level = 1;
+
+// Item mastery: XP to master = base + price / divisor, so cheap items master in a few duels
+// and endgame items take 15 or more. The first mastery of an item grants stat points.
+constexpr int mastery_base_xp = 400;
+constexpr int mastery_price_divisor = 5;
+constexpr int mastery_stat_points = 1;
+
+// Shop (progression spec): selling returns part of the price.
+constexpr int sell_percent = 50;
+constexpr int sell_percent_mastered = 75;
+constexpr int hp_per_health_point = 10;
+constexpr int damage_per_attack_point = 2;
+constexpr int shield_points_per_pip = 3;
+constexpr int max_shield_pips = 6;             // Spec: 3 to 6
+constexpr int shield_points_per_parry_frame = 5;
+constexpr int max_parry_window = 12;           // Never wider than the dodge window
+constexpr int magic_points_per_charge = 3;
+constexpr int max_magic_charges = 6;
+constexpr int spell_percent_per_magic_point = 5;
+constexpr int hp_per_bar_segment = 50;         // The HP bar grows 8 px per this much max HP over 100
 
 constexpr int damage_diagonal_slash = 12;
 constexpr int damage_horizontal_slash = 12;
@@ -263,11 +328,16 @@ constexpr int enemy_hit_shake = 2;
 constexpr int hit_streak_frames = 6;           // Slash streak across the enemy's body
 constexpr int attack_lunge = 6;                // Hero leans toward the enemy on a slash
 constexpr int combo_finisher_shake = 5;        // Enemy shake on the slash that completes a combo
+constexpr int burn_flicker_frames = 3;         // Red flicker on each burn tick
 constexpr int popup_frames = 45;               // "COMBO" text and similar popups
 constexpr int super_full_blink = 8;            // Full super meter blinks, switching every N frames
 constexpr int defeat_sink_frames = 40;         // Loser sinks out of view over this many frames
 constexpr int defeat_sink_distance = 48;
 constexpr int result_prompt_delay = 60;        // Before "Press START" appears on win/lose
+
+// Duel rewards (progression spec): bonuses on duel XP, earned anywhere in the duel.
+constexpr int perfect_sequence_xp_bonus = 25;  // Percent, for at least one perfect parry sequence
+constexpr int no_block_xp_bonus = 10;          // Percent, for finishing without blocking
 
 }
 

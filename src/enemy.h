@@ -60,6 +60,15 @@ public:
     // (the slash that completes a combo) gets a red streak and a harder shake.
     void take_hit(int direction, int damage, bool finisher = false);
 
+    // Damage with only a faint red flicker, for burn ticks.
+    void take_damage(int damage);
+
+    // Ice weapon: adds frames to the current opening (does nothing outside one).
+    void extend_opening(int frames);
+
+    // Shock weapon: when the current opening ends, he stays stunned this long first.
+    void stun_after_opening(int frames);
+
     // Duel over: defeat() when out of HP, stand_down() when the hero has fallen.
     void defeat();
     void stand_down();
@@ -143,6 +152,8 @@ private:
     bool _hit_finisher = false;
     open_kind _open_kind = open_kind::NORMAL;
     bool _reel_continues = true;   // After STAGGERED: true = next attack, false = new sequence
+    int _after_opening_stun = 0;
+    int _tick_flicker = 0;         // Counts down after a burn tick
     bool _impact = false;
     bool _sequence_finished = false;
     int _fade = 0;

@@ -68,8 +68,13 @@ namespace
     }
 }
 
-hero::hero() :
-    _sprite(bn::sprite_items::hero.create_sprite(home_position))
+hero::hero(const hero_profile& profile) :
+    _sprite(bn::sprite_items::hero.create_sprite(home_position)),
+    _max_hp(profile.max_hp()),
+    _hp(_max_hp),
+    _max_pips(profile.shield_pips()),
+    _refill_frames(profile.shield_refill_frames()),
+    _shield_pips(_max_pips)
 {
     _sprite.set_bg_priority(bg_priority);
 }
@@ -211,7 +216,7 @@ void hero::flash()
 
 void hero::heal(int amount)
 {
-    _hp = _hp + amount < tuning::player_max_hp ? _hp + amount : tuning::player_max_hp;
+    _hp = _hp + amount < _max_hp ? _hp + amount : _max_hp;
 }
 
 void hero::_update_channel()
@@ -417,7 +422,7 @@ void hero::_settle_parry_direction()
 
 void hero::_update_shield_regen()
 {
-    bool can_regen = tuning::shield_regen_frames > 0 && _shield_pips < tuning::shield_pips &&
+    bool can_regen = _refill_frames > 0 && _shield_pips < _max_pips &&
                      _state != hero_state::BLOCK && _state != hero_state::STAGGERED;
 
     if(! can_regen)
@@ -426,7 +431,7 @@ void hero::_update_shield_regen()
         return;
     }
 
-    if(++_shield_regen >= tuning::shield_regen_frames)
+    if(++_shield_regen >= _refill_frames)
     {
         ++_shield_pips;
         _shield_regen = 0;
