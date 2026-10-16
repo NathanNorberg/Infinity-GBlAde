@@ -200,6 +200,16 @@ void hud::show_victory(const duel_rewards& rewards, const hero_profile& profile)
     {
         bn::ostringstream stream(text);
         stream << "+" << rewards.xp << " XP   +" << rewards.gold << " gold";
+
+        if(rewards.found_key)
+        {
+            stream << "   +1 key";
+        }
+
+        if(rewards.healed > 0)
+        {
+            stream << "   +" << rewards.healed << " HP";
+        }
     }
 
     _write_line(victory_rewards_y, text.c_str(), _result_sprites);

@@ -107,6 +107,11 @@ The game saves after every duel and at every shop visit. The checksum lets it fa
 - **Between duels before the castle exists:** a gate hub menu (Fight, Character, Equipment, Shop). Fight starts the next duel on a rising difficulty ladder; milestone 4 replaces it with the castle route (decided Oct 13).
 - **Save slots:** two slots, each with a backup copy and checksum, picked from the title screen (decided Oct 13).
 - **Item roster:** the full 6 to 8 items per slot is built in milestone 3; milestone 5 adds their art and sound (decided Oct 13).
+- **HP within a run:** carries over between duels and refills only at the start of a run, so defense and Heal rings matter across the climb (decided Oct 15). After each win, 10% of max HP comes back, deliberately small (decided Oct 15). Turning the game off mid-duel counts as losing that duel when the save is loaded, so the power switch can't dodge a death (decided Oct 15).
+- **The God King:** his own enemy type, with his own colors, HP and move set (every attack including rising slashes, heavy on feints and unblockables), on top of the God King tier (decided Oct 15).
+- **Area screens:** each area is one screen with its own background and 2 to 4 hotspot markers; the D-pad moves between them and A acts (decided Oct 15).
+- **Teaching order:** the gate throws Knights and Duelists only (no Brute); the fork paths bring diagonal slashes but no unblockables; the great hall brings the first unblockables (decided Oct 15).
+- **Castle tuning (milestone 4 starting values, in include/castle.h and include/tuning.h):** the great hall uses a new "Hall captain" tier (hall pace, 10% unblockables); the throne approach's elite guard drops a key half the time, and the great hall holds the locked chest, so keys carry from one bloodline to the next; plain chests hold an item 40% of the time (up to the area's price cap), locked chests an unowned item worth 4,000 or more; the God King gains +25% HP and +10% damage per cycle; death costs 10% of gold.
 
 ## Open questions
 

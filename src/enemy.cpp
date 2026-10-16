@@ -25,6 +25,7 @@
 #include "bn_sprite_items_telegraph.h"
 #include "bn_bg_palette_items_enemy_palette_brute.h"
 #include "bn_bg_palette_items_enemy_palette_duelist.h"
+#include "bn_bg_palette_items_enemy_palette_god_king.h"
 
 namespace igb
 {
@@ -67,6 +68,7 @@ namespace
         nullptr,
         &bn::bg_palette_items::enemy_palette_brute,
         &bn::bg_palette_items::enemy_palette_duelist,
+        &bn::bg_palette_items::enemy_palette_god_king,
     };
 
     // Telegraph sprite frames.
@@ -101,7 +103,7 @@ enemy::enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type) :
     _tier(tier),
     _type(type),
     _bg(bn::regular_bg_items::enemy_idle.create_bg(0, 0)),
-    _hp(type.max_hp)
+    _hp(type.max_hp * tier.hp_percent / 100)
 {
     _bg.set_priority(bg_priority);
 

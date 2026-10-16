@@ -1,12 +1,15 @@
 #include "bn_core.h"
 #include "bn_optional.h"
 
+#include "area_scene.h"
+#include "castle_run.h"
 #include "character_scene.h"
 #include "duel_scene.h"
 #include "gear_scene.h"
 #include "hero_profile.h"
 #include "hub_scene.h"
 #include "save_data.h"
+#include "story_scene.h"
 #include "title_scene.h"
 
 int main()
@@ -24,6 +27,8 @@ int main()
     bn::optional<igb::duel_scene> duel;
     bn::optional<igb::character_scene> character;
     bn::optional<igb::gear_scene> gear;
+    bn::optional<igb::area_scene> area;
+    bn::optional<igb::story_scene> story;
 
     igb::scene_id current = igb::scene_id::TITLE;
     title.emplace(profile, active_slot);
@@ -41,6 +46,15 @@ int main()
 
         case igb::scene_id::HUB:
             next = hub->update();
+            break;
+
+        case igb::scene_id::AREA:
+            next = area->update();
+            break;
+
+        case igb::scene_id::NEW_GENERATION:
+        case igb::scene_id::ENDING:
+            next = story->update();
             break;
 
         case igb::scene_id::DUEL:
@@ -62,8 +76,25 @@ int main()
             break;
         }
 
+        // Loading a save made mid-duel (the game was turned off during a castle duel) counts
+        // as losing that duel, so turning the power off can't dodge a death.
+        if(current == igb::scene_id::TITLE && next == igb::scene_id::HUB && igb::run::interrupted_duel(profile))
+        {
+            igb::run::die(profile);
+            igb::save::write(active_slot, profile);
+            next = igb::scene_id::NEW_GENERATION;
+        }
+
+        // A saved run resumes in the castle rather than at the gate.
+        if(next == igb::scene_id::HUB && profile.in_run)
+        {
+            next = igb::scene_id::AREA;
+        }
+
         if(next != igb::scene_id::NONE)
         {
+            area.reset();
+            story.reset();
             title.reset();
             hub.reset();
             duel.reset();
@@ -88,19 +119,32 @@ int main()
                 hub.emplace(profile, active_slot);
                 break;
 
+            case igb::scene_id::NEW_GENERATION:
+            case igb::scene_id::ENDING:
+                story.emplace(next, profile);
+                break;
+
+            case igb::scene_id::AREA:
+                if(current != igb::scene_id::TITLE)
+                {
+                    igb::save::write(active_slot, profile);
+                }
+
+                area.emplace(profile, active_slot);
+                break;
+
             case igb::scene_id::DUEL:
-                // The hub's Fight always takes the ladder's next duel; debug restarts keep a
-                // Select + L/R override.
-                if(current == igb::scene_id::HUB)
+                // A run's duel takes its enemy from the castle; debug restarts keep a
+                // Select + L/R override until the next duel picked in the castle.
+                if(current == igb::scene_id::AREA)
                 {
                     debug.enemy_override = false;
                 }
 
-                if(! debug.enemy_override)
+                if(! debug.enemy_override && profile.in_run && profile.run_duel_hotspot >= 0)
                 {
-                    const igb::tuning::ladder_duel& step = igb::tuning::fight_ladder[profile.ladder_step];
-                    debug.tier_index = step.tier_index;
-                    debug.type_index = step.type_index;
+                    debug.tier_index = igb::run::current_area(profile).tier_index;
+                    debug.type_index = igb::run::duel_type(profile, profile.run_duel_hotspot);
                 }
 
                 duel.emplace(debug, profile);

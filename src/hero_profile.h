@@ -46,7 +46,21 @@ struct hero_profile
     int xp = 0;                    // Toward the next level; resets on level-up
     int unspent_points = 0;
     int gold = 0;
-    int ladder_step = 0;           // Next duel on the hub's fight ladder
+
+    // Bloodline: carries over between generations.
+    int keys = 0;
+    int bloodline = 1;             // Generation number
+    int cycle = 0;                 // New game plus count (God King wins)
+
+    // The current run through the castle; reset at the gate.
+    bool in_run = false;
+    int run_area = 0;              // Into castle::areas
+    int run_cleared = 0;           // Bit per hotspot in the current area: duel won or treasure taken
+    int run_hp = 0;                // Carries over between duels within a run
+    unsigned run_seed = 0;         // Rolls enemy types and treasure, so a reload doesn't reroll
+    int run_duel_hotspot = -1;     // The duel in progress, if any
+
+    int last_gold_lost = 0;        // For the death scene; not saved
 
     // Stat points spent.
     int health = 0;

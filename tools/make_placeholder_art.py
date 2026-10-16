@@ -92,6 +92,214 @@ class Image:
 # columns 8..247 and rows 48..207. Wall on top, trim at the horizon, floor below.
 # ---------------------------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------------------------
+# Castle area screens: 256x256 regular BGs, one per area (gate, garden, barracks, great hall,
+# throne approach, throne room). Wall or sky on top, floor below a horizon at image row 120
+# (screen y -8), and a few shapes that say which area it is. Hotspot markers sit on top.
+# ---------------------------------------------------------------------------------------------
+
+AREA_HORIZON = 120
+
+
+def area_base(palette, wall_colors, floor_colors, seam):
+    """Fills a wall gradient above the horizon and floor bands below, with stone seams."""
+    img = Image(256, 256, palette)
+    for y in range(AREA_HORIZON):
+        img.rect(0, y, 256, y + 1, wall_colors[min(len(wall_colors) - 1, y * len(wall_colors) // AREA_HORIZON)])
+    for y in range(AREA_HORIZON, 256):
+        band = min(len(floor_colors) - 1, (y - AREA_HORIZON) // 12)
+        img.rect(0, y, 256, y + 1, floor_colors[band])
+    if seam:
+        for y in range(AREA_HORIZON + 11, 256, 12):
+            img.rect(0, y, 256, y + 1, seam)
+    return img
+
+
+def make_area_gate():
+    palette = [(255, 0, 255), (10, 12, 30), (18, 22, 48), (28, 32, 66), (240, 240, 200),
+               (50, 52, 70), (70, 72, 92), (34, 34, 48), (60, 56, 52), (84, 78, 70), (104, 96, 84),
+               (40, 36, 34), (14, 14, 20)]
+    img = area_base(palette, [1, 2, 3], [8, 9, 10, 10], 11)
+    for x, y in ((20, 12), (60, 30), (110, 8), (170, 24), (220, 14), (240, 44), (88, 50), (200, 60)):
+        img.rect(x, y, x + 1, y + 1, 4)                                      # Stars
+    img.rect(0, 56, 256, AREA_HORIZON, 6)                                    # Castle wall
+    for x in range(0, 256, 16):
+        img.rect(x, 48, x + 10, 56, 6)                                       # Battlements
+    for y in range(64, AREA_HORIZON, 12):
+        img.rect(0, y, 256, y + 1, 7)
+    img.rect(100, 70, 156, AREA_HORIZON, 12)                                 # Gate arch
+    img.rect(108, 64, 148, 70, 12)
+    img.rect(116, 60, 140, 64, 12)
+    return img
+
+
+def make_area_garden():
+    palette = [(255, 0, 255), (70, 110, 170), (100, 140, 190), (140, 176, 210),
+               (24, 70, 30), (36, 96, 40), (50, 120, 54), (70, 140, 60), (90, 156, 70),
+               (110, 170, 84), (150, 130, 90), (120, 100, 70), (30, 60, 26)]
+    img = area_base(palette, [1, 2, 3], [7, 8, 9, 9], 0)
+    for x in range(0, 256, 40):
+        img.rect(x, 84, x + 34, AREA_HORIZON, 5)                             # Hedges
+        img.rect(x, 84, x + 34, 88, 6)
+        img.rect(x + 34, 84, x + 40, AREA_HORIZON, 12)
+    for y in range(AREA_HORIZON, 256):                                      # Gravel path, widening
+        half = 10 + (y - AREA_HORIZON) // 3
+        img.rect(128 - half, y, 128 + half, y + 1, 10 if (y // 6) % 2 else 11)
+    return img
+
+
+def make_area_barracks():
+    palette = [(255, 0, 255), (60, 38, 26), (80, 52, 34), (100, 66, 42), (40, 26, 18),
+               (110, 86, 60), (90, 70, 50), (70, 56, 40), (52, 42, 30), (150, 150, 156), (96, 60, 36), (30, 20, 14)]
+    img = area_base(palette, [3, 2, 1], [5, 6, 7, 8], 0)
+    for x in range(0, 256, 24):
+        img.rect(x, 0, x + 1, AREA_HORIZON, 4)                               # Wall planks
+    for x in (40, 200):
+        img.rect(x, 60, x + 4, AREA_HORIZON, 10)                             # Weapon racks
+        img.rect(x + 30, 60, x + 34, AREA_HORIZON, 10)
+        img.rect(x, 70, x + 34, 72, 10)
+        for spear in range(x + 8, x + 30, 7):
+            img.rect(spear, 50, spear + 2, AREA_HORIZON - 4, 9)
+    return img
+
+
+def make_area_great_hall():
+    palette = [(255, 0, 255), (40, 40, 56), (54, 54, 74), (66, 66, 90), (90, 90, 116),
+               (150, 30, 40), (110, 20, 30), (200, 160, 60), (70, 64, 80), (90, 84, 100), (110, 104, 120),
+               (50, 46, 60), (24, 24, 34)]
+    img = area_base(palette, [1, 2, 3], [8, 9, 10, 10], 11)
+    for x in range(16, 256, 56):
+        img.rect(x, 0, x + 18, AREA_HORIZON, 4)                              # Pillars
+        img.rect(x + 14, 0, x + 18, AREA_HORIZON, 12)
+        img.rect(x + 24, 20, x + 40, 70, 5)                                  # Banners
+        img.rect(x + 24, 20, x + 40, 24, 7)
+        img.rect(x + 28, 70, x + 36, 76, 6)
+    return img
+
+
+def make_area_throne_approach():
+    palette = [(255, 0, 255), (20, 18, 30), (30, 26, 44), (40, 36, 58), (70, 64, 90),
+               (140, 20, 30), (170, 34, 44), (200, 160, 60), (46, 42, 56), (60, 56, 72), (76, 70, 88),
+               (34, 30, 44), (14, 12, 20)]
+    img = area_base(palette, [1, 2, 3], [8, 9, 10, 10], 11)
+    for x in (24, 72, 168, 216):
+        img.rect(x, 0, x + 16, AREA_HORIZON, 4)
+        img.rect(x + 12, 0, x + 16, AREA_HORIZON, 12)
+    for y in range(AREA_HORIZON, 256):                                      # Red carpet to the throne
+        half = 14 + (y - AREA_HORIZON) // 4
+        img.rect(128 - half, y, 128 + half, y + 1, 5)
+        img.rect(128 - half, y, 128 - half + 2, y + 1, 7)
+        img.rect(128 + half - 2, y, 128 + half, y + 1, 7)
+    img.rect(112, 40, 144, AREA_HORIZON, 12)                                 # Doorway ahead
+    return img
+
+
+def make_area_throne_room():
+    palette = [(255, 0, 255), (30, 14, 40), (44, 22, 58), (60, 30, 76), (250, 200, 60),
+               (140, 20, 30), (170, 34, 44), (200, 150, 40), (50, 30, 60), (66, 40, 78), (84, 52, 96),
+               (36, 20, 46), (14, 8, 20)]
+    img = area_base(palette, [1, 2, 3], [8, 9, 10, 10], 11)
+    img.rect(104, 30, 152, AREA_HORIZON, 12)                                 # Throne silhouette
+    img.rect(96, 76, 160, AREA_HORIZON, 12)
+    img.rect(104, 30, 152, 34, 4)
+    for x in (108, 124, 140):
+        img.rect(x, 22, x + 6, 30, 4)                                        # Crown points
+    for y in range(AREA_HORIZON, 256):
+        half = 18 + (y - AREA_HORIZON) // 4
+        img.rect(128 - half, y, 128 + half, y + 1, 5)
+    return img
+
+
+AREA_MAKERS = [
+    ("area_gate", make_area_gate),
+    ("area_garden", make_area_garden),
+    ("area_barracks", make_area_barracks),
+    ("area_great_hall", make_area_great_hall),
+    ("area_throne_approach", make_area_throne_approach),
+    ("area_throne_room", make_area_throne_room),
+]
+
+
+# ---------------------------------------------------------------------------------------------
+# Hotspot markers: 16x16 sprite, 11 frames stacked vertically:
+# 0 duel, 1 duel won, 2 gold pouch, 3 pouch taken, 4 chest, 5 chest opened, 6 locked chest,
+# 7 exit, 8 exit blocked, 9 God King (crown), 10 elite guard (skull).
+# ---------------------------------------------------------------------------------------------
+
+MARKER_PALETTE = [
+    (255, 0, 255),    # 0 transparent
+    (8, 8, 12),       # 1 outline
+    (200, 210, 224),  # 2 steel
+    (250, 200, 60),   # 3 gold
+    (130, 90, 40),    # 4 wood / leather
+    (90, 60, 30),     # 5 dark wood
+    (90, 90, 100),    # 6 dim (taken / blocked)
+    (60, 200, 90),    # 7 exit green
+    (230, 60, 50),    # 8 red
+    (240, 240, 230),  # 9 bone
+]
+
+
+def make_markers():
+    img = Image(16, 16 * 11, MARKER_PALETTE)
+
+    def cell(frame):
+        return frame * 16
+
+    def swords(oy, color):
+        img.line(3, oy + 3, 12, oy + 12, 2, color)
+        img.line(12, oy + 3, 3, oy + 12, 2, color)
+        img.rect(2, oy + 11, 6, oy + 13, 4 if color == 2 else color)
+        img.rect(10, oy + 11, 14, oy + 13, 4 if color == 2 else color)
+
+    def pouch(oy, color, tie):
+        img.rect(4, oy + 6, 12, oy + 14, color)
+        img.rect(5, oy + 5, 11, oy + 6, color)
+        img.rect(6, oy + 3, 10, oy + 5, tie)
+
+    def chest(oy, body, lid_open, lock):
+        img.rect(2, oy + 8, 14, oy + 14, body)
+        if lid_open:
+            img.rect(2, oy + 3, 14, oy + 6, body)
+            img.rect(4, oy + 6, 12, oy + 8, 3)                               # Gold inside
+        else:
+            img.rect(2, oy + 5, 14, oy + 8, body)
+        img.rect(2, oy + 8, 14, oy + 9, 3)
+        if lock:
+            img.rect(6, oy + 7, 10, oy + 12, 2)
+            img.rect(7, oy + 9, 9, oy + 10, 1)
+
+    def door(oy, color):
+        img.rect(4, oy + 3, 12, oy + 14, color)
+        img.rect(5, oy + 2, 11, oy + 3, color)
+        img.rect(6, oy + 7, 10, oy + 8, 1)                                   # Arrow-ish bar
+        img.rect(8, oy + 5, 9, oy + 10, 1)
+
+    swords(cell(0), 2)
+    swords(cell(1), 6)
+    pouch(cell(2), 4, 3)
+    pouch(cell(3), 6, 6)
+    chest(cell(4), 5, False, False)
+    chest(cell(5), 5, True, False)
+    chest(cell(6), 5, False, True)
+    door(cell(7), 7)
+    door(cell(8), 6)
+    oy = cell(9)                                                             # Crown
+    img.rect(2, oy + 7, 14, oy + 13, 3)
+    for x in (2, 7, 12):
+        img.rect(x, oy + 3, x + 2, oy + 7, 3)
+    img.rect(7, oy + 9, 9, oy + 11, 8)
+    oy = cell(10)                                                            # Skull
+    img.rect(4, oy + 3, 12, oy + 11, 9)
+    img.rect(6, oy + 11, 10, oy + 14, 9)
+    img.rect(5, oy + 6, 7, oy + 8, 1)
+    img.rect(9, oy + 6, 11, oy + 8, 1)
+
+    for frame in range(11):
+        img.outline(1, (0, cell(frame), 16, cell(frame) + 16))
+    return img
+
+
 def make_arena():
     palette = [
         (255, 0, 255),    # 0 transparent (unused)
@@ -194,6 +402,18 @@ ENEMY_TYPE_PALETTES = {
         (250, 252, 255),  # 7 blade edge
         (60, 34, 50),     # 8 leather
         (230, 190, 70),   # 9 trim (gold)
+    ],
+    "god_king": [
+        (255, 0, 255),    # 0 transparent
+        (8, 4, 12),       # 1 outline
+        (26, 14, 38),     # 2 armor dark (royal black-purple)
+        (64, 32, 86),     # 3 armor mid
+        (130, 84, 164),   # 4 armor light
+        (250, 250, 255),  # 5 visor glow (white)
+        (240, 206, 120),  # 6 blade (gilded)
+        (255, 250, 214),  # 7 blade edge
+        (92, 20, 32),     # 8 leather (crimson)
+        (250, 200, 60),   # 9 trim (gold)
     ],
 }
 
@@ -659,6 +879,9 @@ def main():
     charge_orb = make_charge_orb()
 
     arena.save_bmp(os.path.join(GRAPHICS_DIR, "arena.bmp"))
+    for name, maker in AREA_MAKERS:
+        maker().save_bmp(os.path.join(GRAPHICS_DIR, name + ".bmp"))
+    make_markers().save_bmp(os.path.join(GRAPHICS_DIR, "markers.bmp"))
     for name, img in enemy_poses:
         img.save_bmp(os.path.join(GRAPHICS_DIR, "enemy_" + name + ".bmp"))
     for name, img in make_enemy_type_palettes():

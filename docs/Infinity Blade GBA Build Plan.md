@@ -79,7 +79,22 @@ The progression core breaks into eleven tasks, in build order (planned Oct 13).
 - [x] Save data: two slots plus a backup copy each, checksum, title Continue/New Game with a slot picker, autosave after duels and shop visits
 - [x] Debug grants (XP, gold, items, save reset) and the exit test
 
-## Placeholder art
+## Milestone 4 tasks
+
+The castle and bloodline break into ten tasks, in build order (planned Oct 15).
+
+- [ ] Castle data: five areas, the fork, duel counts, per-area enemy rosters in teaching order, treasure tables; rerolled each run
+- [ ] God King as his own enemy type: colors, HP and move set, scaled by cycle (level 50 on the first cycle)
+- [ ] Run state in the profile and save data: area, hotspot, current HP, opened chests, keys, bloodline count, cycle
+- [ ] Area screens: a background per area, 2 to 4 hotspot markers, D-pad to move, A to act; the fork choice
+- [ ] Treasure: gold pouches, chests with gold or items, locked chests and keys from elite guards
+- [ ] Duels inside a run: HP carries over between duels, results return to the area, super meter empties
+- [ ] The gate between runs: shop, equipment and character only here; "Enter the castle" replaces the fight ladder; continue a saved run
+- [ ] Death: the run ends, 10% of gold is lost, the next generation walks to the gate in a short cutscene, bloodline count goes up
+- [ ] Beating the God King: a short ending, then the next cycle (new game plus) with a stronger God King
+- [ ] Debug (jump to an area, grant keys, set the cycle, refill HP) and the exit test: a full bloodline loop, start to finish
+
+
 
 The prototype uses simple shapes so combat can be judged before any real pixel art exists.
 

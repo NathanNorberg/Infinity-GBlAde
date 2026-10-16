@@ -14,6 +14,8 @@ struct slot_summary
     bool used = false;
     int level = 0;
     int gold = 0;
+    int bloodline = 0;
+    bool in_run = false;
 };
 
 // Each slot keeps a primary and a backup copy in SRAM, both with a checksum. Writing does the

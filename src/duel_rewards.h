@@ -17,6 +17,8 @@ struct duel_rewards
     int item_xp[int(item_slot::COUNT)] = {};   // By slot, for the items worn in the duel
     int levels_gained = 0;         // Filled in by apply_rewards
     bool newly_mastered[int(item_slot::COUNT)] = {};  // Filled in by apply_rewards
+    bool found_key = false;        // An elite guard dropped a key (set by the duel scene)
+    int healed = 0;                // HP regained after a castle win (set by the duel scene)
 };
 
 // base_xp and gold come from the combined tier + type; the bonuses from how the duel went.

@@ -68,10 +68,10 @@ namespace
     }
 }
 
-hero::hero(const hero_profile& profile) :
+hero::hero(const hero_profile& profile, int start_hp) :
     _sprite(bn::sprite_items::hero.create_sprite(home_position)),
     _max_hp(profile.max_hp()),
-    _hp(_max_hp),
+    _hp(start_hp > 0 && start_hp < _max_hp ? start_hp : _max_hp),
     _max_pips(profile.shield_pips()),
     _refill_frames(profile.shield_refill_frames()),
     _shield_pips(_max_pips)

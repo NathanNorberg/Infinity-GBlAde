@@ -53,6 +53,7 @@ struct enemy_tier
     bool rising_slashes;           // Throws rising slashes (late game), parried down-left/down-right
     int xp_reward;                 // Base duel XP for beating him
     int gold_reward;               // Gold for beating him (spec: 50 to 300 by tier)
+    int hp_percent = 100;          // Scales the type's HP (the God King grows each cycle)
 };
 
 // Gate guards (the first two duels) teach the four straight answers: no diagonal slashes,
@@ -62,12 +63,14 @@ struct enemy_tier
 // the great hall; per-area rosters in milestone 4 can refine this).
 constexpr enemy_tier tier_gate_guard = { "Gate guard", 140, 28, 70, 2, false, 80, 0, 0, false, 40, 50 };
 constexpr enemy_tier tier_hall_guard = { "Hall guard", 115, 20, 55, 3, true, 100, 0, 0, false, 80, 100 };
+// Great hall: hall-guard pace with the first unblockable attacks (progression spec).
+constexpr enemy_tier tier_hall_captain = { "Hall captain", 110, 18, 50, 3, true, 100, 10, 0, false, 110, 150 };
 constexpr enemy_tier tier_elite = { "Elite", 100, 16, 45, 4, true, 100, 20, 15, false, 150, 200 };
 constexpr enemy_tier tier_god_king = { "God King", 70, 12, 35, 4, true, 100, 25, 20, true, 400, 300 };
 
-// Easiest first. The debug overlay cycles through these with L.
+// Easiest first. The debug overlay cycles through these with Select + L.
 inline constexpr const enemy_tier* enemy_tiers[] = {
-    &tier_gate_guard, &tier_hall_guard, &tier_elite, &tier_god_king
+    &tier_gate_guard, &tier_hall_guard, &tier_hall_captain, &tier_elite, &tier_god_king
 };
 
 constexpr int enemy_tier_count = sizeof(enemy_tiers) / sizeof(enemy_tiers[0]);
@@ -91,7 +94,7 @@ struct enemy_type
     int heavy_scale_percent;       // Scales the tier's unblockable chance
     int feint_scale_percent;       // Scales the tier's feint chance
     int max_attacks_change;        // Added to the tier's longest sequence (kept within the sequence limits)
-    int palette;                   // 0 = the knight art's own colors, 1 = brute, 2 = duelist
+    int palette;                   // 0 = the knight art's own colors, 1 = brute, 2 = duelist, 3 = God King
 
     // How often each attack is picked, in attack_id order:
     // slash /, slash \, horizontal <, horizontal >, overhead, sweep, thrust, rising /, rising \.
@@ -114,34 +117,29 @@ constexpr enemy_type type_brute = { "Brute", 880, 125, 130, 140, 200, 0, -1, 1,
 constexpr enemy_type type_duelist = { "Duelist", 440, 80, 75, 80, 50, 200, 1, 2,
                                       { 3, 3, 2, 2, 1, 1, 3, 2, 2 }, 110 };
 
-// The debug overlay cycles through these with R.
+// God King: his own type for the throne room. Throws everything (rising slashes most of all),
+// hits hard, and leans on unblockables and feints. Fixed at "level 50" on the first cycle;
+// each cycle after a win makes him stronger (see god_king_*_per_cycle).
+constexpr enemy_type type_god_king = { "God King", 1200, 100, 90, 120, 120, 125, 0, 3,
+                                       { 2, 2, 2, 2, 3, 2, 2, 3, 3 }, 150 };
+
+// The debug overlay cycles through these with Select + R.
 inline constexpr const enemy_type* enemy_types[] = {
-    &type_knight, &type_brute, &type_duelist
+    &type_knight, &type_brute, &type_duelist, &type_god_king
 };
+
+constexpr int god_king_type_index = 3;
+constexpr int god_king_hp_percent_per_cycle = 25;      // New game plus: more HP each cycle
+constexpr int god_king_damage_percent_per_cycle = 10;  // ...and harder hits
+
+// Within a castle run, HP carries between duels; each win gives a little back.
+constexpr int win_heal_percent = 10;           // Of max HP
+
+// Death (progression spec): the run ends and part of the carried gold is lost.
+constexpr int death_gold_loss_percent = 10;
 
 constexpr int enemy_type_count = sizeof(enemy_types) / sizeof(enemy_types[0]);
 constexpr int first_duel_type = 0;             // Index into enemy_types
-
-// ---------------------------------------------------------------------------------------------
-// Fight ladder: the hub's Fight button climbs these duels in order (indices into enemy_tiers
-// and enemy_types). Beating the last one wraps back to the first. The castle route replaces
-// this in milestone 4.
-// ---------------------------------------------------------------------------------------------
-
-struct ladder_duel
-{
-    int tier_index;
-    int type_index;
-};
-
-inline constexpr ladder_duel fight_ladder[] = {
-    { 0, 0 }, { 0, 2 },                 // Gate: Knight, Duelist
-    { 1, 0 }, { 1, 1 }, { 1, 2 },       // Hall: Knight, Brute, Duelist
-    { 2, 0 }, { 2, 2 }, { 2, 1 },       // Elite: Knight, Duelist, Brute
-    { 3, 0 },                           // God King
-};
-
-constexpr int fight_ladder_length = sizeof(fight_ladder) / sizeof(fight_ladder[0]);
 
 // One enemy's effective settings: the tier scaled by the type, named after the type.
 constexpr enemy_tier combine(const enemy_tier& tier, const enemy_type& type)
@@ -166,6 +164,18 @@ constexpr enemy_tier combine(const enemy_tier& tier, const enemy_type& type)
     result.max_attacks = max_attacks < sequence_min_attacks ? sequence_min_attacks :
                          max_attacks > sequence_max_attacks ? sequence_max_attacks : max_attacks;
     return result;
+}
+
+// The God King grows stronger with each cycle (new game plus); other enemies don't change.
+constexpr enemy_tier scale_for_cycle(enemy_tier enemy, int type_index, int cycle)
+{
+    if(type_index == god_king_type_index)
+    {
+        enemy.hp_percent = 100 + cycle * god_king_hp_percent_per_cycle;
+        enemy.damage_percent = enemy.damage_percent * (100 + cycle * god_king_damage_percent_per_cycle) / 100;
+    }
+
+    return enemy;
 }
 
 // ---------------------------------------------------------------------------------------------

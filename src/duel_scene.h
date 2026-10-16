@@ -20,6 +20,8 @@ class duel_scene
 
 public:
     // profile outlives the duel; rewards are written back to it later.
+    // A castle run's duel when the profile is in a run with a duel hotspot picked and no
+    // debug enemy override; otherwise a stand-alone duel (debug).
     duel_scene(debug_settings& debug, hero_profile& profile);
 
     // Returns NONE while the duel runs, DUEL to start a fresh one (after a result, or a
@@ -69,6 +71,9 @@ private:
 
     result _result = result::NONE;
     bool _result_decided = false;
+    bool _run_duel;                    // Part of a castle run: HP carries over, results go back to the area
+    bool _died_in_run = false;
+    bool _god_king_slain = false;
     int _result_frames = 0;
 
     // Defensive results in the current enemy sequence; they decide the opening.

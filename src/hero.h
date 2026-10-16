@@ -32,8 +32,9 @@ class hero
 {
 
 public:
-    // Max HP and shield pips come from the profile's stats.
-    explicit hero(const hero_profile& profile);
+    // Max HP and shield pips come from the profile's stats; start_hp is where the HP bar
+    // begins (within a castle run, HP carries over between duels).
+    hero(const hero_profile& profile, int start_hp);
 
     void update();
 

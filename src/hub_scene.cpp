@@ -9,6 +9,7 @@
 #include "bn_regular_bg_items_arena.h"
 
 #include "common_variable_8x8_sprite_font.h"
+#include "castle_run.h"
 #include "leveling.h"
 #include "save_data.h"
 
@@ -26,7 +27,7 @@ namespace
         OPTION_COUNT
     };
 
-    constexpr const char* option_names[] = { "Fight", "Character", "Equipment", "Shop" };
+    constexpr const char* option_names[] = { "Enter the castle", "Character", "Equipment", "Shop" };
 
     // Screen origin is the center.
     constexpr int title_y = -64;
@@ -54,6 +55,8 @@ hub_scene::hub_scene(hero_profile& profile, int active_slot) :
 
 scene_id hub_scene::update()
 {
+    ++_frames;
+
     if(_update_debug_grants())
     {
         return scene_id::NONE;
@@ -77,7 +80,11 @@ scene_id hub_scene::update()
         {
 
         case FIGHT:
-            return scene_id::DUEL;
+            // A fresh run: full HP, nothing cleared, enemies and treasure rolled from a new seed.
+            run::start(_profile, _frames * 2654435761u ^ unsigned(_profile.bloodline) * 40503u ^
+                                 unsigned(_profile.gold));
+            save::write(_active_slot, _profile);
+            return scene_id::AREA;
 
         case CHARACTER:
             return scene_id::CHARACTER;
@@ -138,7 +145,17 @@ void hub_scene::_redraw()
     _sprites.clear();
 
     _text_generator.set_center_alignment();
-    _text_generator.generate(0, title_y, "THE CASTLE GATE", _sprites);
+    {
+        bn::string<48> heading;
+        bn::ostringstream stream(heading);
+        stream << "THE CASTLE GATE    Bloodline " << _profile.bloodline;
+
+        if(_profile.cycle > 0)
+        {
+            stream << "    Cycle " << (_profile.cycle + 1);
+        }
+        _text_generator.generate(0, title_y, heading, _sprites);
+    }
 
     bn::string<48> text;
 
@@ -155,7 +172,7 @@ void hub_scene::_redraw()
             stream << "XP " << _profile.xp << "/" << xp_to_next_level(_profile.level);
         }
 
-        stream << "    " << _profile.gold << " gold";
+        stream << "    " << _profile.gold << " gold    Keys " << _profile.keys;
     }
 
     _text_generator.generate(0, status_y, text, _sprites);
@@ -194,12 +211,7 @@ void hub_scene::_redraw()
         {
 
         case FIGHT:
-            {
-                const tuning::ladder_duel& next = tuning::fight_ladder[_profile.ladder_step];
-                stream << "Next: " << tuning::enemy_tiers[next.tier_index]->name << " "
-                       << tuning::enemy_types[next.type_index]->name << "  (duel " << (_profile.ladder_step + 1)
-                       << " of " << tuning::fight_ladder_length << ")";
-            }
+            stream << "Climb to the God King";
             break;
 
         case CHARACTER:

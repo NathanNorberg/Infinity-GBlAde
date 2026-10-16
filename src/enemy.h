@@ -129,7 +129,7 @@ public:
 
     [[nodiscard]] int max_hp() const
     {
-        return _type.max_hp;
+        return _type.max_hp * _tier.hp_percent / 100;
     }
 
 private:

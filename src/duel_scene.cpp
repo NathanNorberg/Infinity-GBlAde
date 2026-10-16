@@ -8,6 +8,7 @@
 
 #include "bn_regular_bg_items_arena.h"
 
+#include "castle_run.h"
 #include "item_roster.h"
 
 namespace igb
@@ -20,18 +21,21 @@ namespace
 }
 
 duel_scene::duel_scene(debug_settings& debug, hero_profile& profile) :
-    _tier(tuning::combine(*tuning::enemy_tiers[debug.tier_index], *tuning::enemy_types[debug.type_index])),
+    _tier(tuning::scale_for_cycle(tuning::combine(*tuning::enemy_tiers[debug.tier_index],
+                                                  *tuning::enemy_types[debug.type_index]),
+                                  debug.type_index, profile.cycle)),
     _debug_settings(debug),
     _profile(profile),
     _arena_bg(bn::regular_bg_items::arena.create_bg(0, 0)),
     _enemy(_tier, *tuning::enemy_types[debug.type_index]),
-    _hero(profile),
+    _hero(profile, profile.in_run ? profile.run_hp : profile.max_hp()),
     _hud(_tier.name, profile.max_hp(), profile.shield_pips(), profile.magic_charges()),
     _debug(debug, profile),
     _combo(profile.weapon_combo()),
     _ring(profile.ring_spell()),
     _magic_charges(profile.magic_charges()),
-    _last_outcome("-")
+    _last_outcome("-"),
+    _run_duel(profile.in_run && profile.run_duel_hotspot >= 0 && ! debug.enemy_override)
 {
     _arena_bg.set_priority(arena_priority);
     _hero.set_spell(spell_of(_ring));
@@ -154,7 +158,14 @@ scene_id duel_scene::update()
 
     if(_result_frames == tuning::result_prompt_delay)
     {
-        _hud.show_prompt(_result == result::WON ? "START: back to the gate    A: character" : "START: back to the gate");
+        if(_profile.in_run || _died_in_run || _god_king_slain)
+        {
+            _hud.show_prompt("START: continue");
+        }
+        else
+        {
+            _hud.show_prompt(_result == result::WON ? "START: back to the gate    A: character" : "START: back to the gate");
+        }
     }
 
     if(_result_frames < tuning::result_prompt_delay)
@@ -164,10 +175,11 @@ scene_id duel_scene::update()
 
     if(bn::keypad::start_pressed())
     {
-        return scene_id::HUB;
+        return _died_in_run ? scene_id::NEW_GENERATION : _god_king_slain ? scene_id::ENDING :
+               _profile.in_run ? scene_id::AREA : scene_id::HUB;
     }
 
-    if(_result == result::WON && bn::keypad::a_pressed())
+    if(_result == result::WON && ! _profile.in_run && ! _god_king_slain && bn::keypad::a_pressed())
     {
         return scene_id::CHARACTER;
     }
@@ -232,11 +244,35 @@ void duel_scene::_check_result()
         _rewards = compute_rewards(_tier, _profile, _had_perfect_sequence, _blocked);
         apply_rewards(_rewards, _profile);
 
-        // A ladder win moves the hub's Fight to the next duel; debug-picked enemies don't count.
-        if(! _debug_settings.enemy_override)
+        // In a run: the duel's hotspot is won, HP carries over, and elite guards may drop a key.
+        // Beating the God King ends the run (the ending and new game plus come later).
+        if(_run_duel)
         {
-            _profile.ladder_step = (_profile.ladder_step + 1) % tuning::fight_ladder_length;
+            const castle::area& area = run::current_area(_profile);
+            int hotspot = _profile.run_duel_hotspot;
+            run::mark_cleared(_profile, hotspot);
+            // A little HP comes back after each win; the rest carries into the next duel.
+            int heal = _hero.max_hp() * tuning::win_heal_percent / 100;
+            int hp = _hero.hp() + heal < _hero.max_hp() ? _hero.hp() + heal : _hero.max_hp();
+            _rewards.healed = hp - _hero.hp();
+            _profile.run_hp = hp;
+            _profile.run_duel_hotspot = -1;
+
+            if(int(run::roll(_profile, hotspot, 5) % 100) < area.key_drop_percent)
+            {
+                ++_profile.keys;
+                _rewards.found_key = true;
+            }
+
+            // Beating the God King ends the run and starts the next cycle (new game plus).
+            if(_profile.run_area == castle::throne_room)
+            {
+                run::end(_profile);
+                ++_profile.cycle;
+                _god_king_slain = true;
+            }
         }
+
         _hud.show_victory(_rewards, _profile);
     }
     else if(_hero.hp() == 0)
@@ -246,6 +282,14 @@ void duel_scene::_check_result()
         _hero.defeat();
         _enemy.stand_down();
         _hud.show_result("DEFEATED");
+
+        // In a run, death ends it: part of the gold is lost and the next generation takes up
+        // the sword at the gate.
+        if(_run_duel)
+        {
+            run::die(_profile);
+            _died_in_run = true;
+        }
     }
 }
 

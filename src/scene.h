@@ -11,10 +11,13 @@ enum class scene_id
     NONE,
     TITLE,
     HUB,
+    AREA,
     DUEL,
     CHARACTER,
     EQUIPMENT,
-    SHOP
+    SHOP,
+    NEW_GENERATION,     // After dying in the castle
+    ENDING              // After beating the God King
 };
 
 }

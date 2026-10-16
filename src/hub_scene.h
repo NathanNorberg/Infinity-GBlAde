@@ -12,8 +12,8 @@
 namespace igb
 {
 
-// The castle gate between duels: the hero's level, XP and gold, and a menu of Fight,
-// Character, Equipment and Shop. Fight starts the next duel on the fight ladder.
+// The castle gate between runs: the hero's bloodline, level, XP, gold and keys, and a menu of
+// Enter the castle, Character, Equipment and Shop (only available here, between runs).
 // Debug grants, holding Select: A +1000 gold, B levels up, R owns every item (saved at once).
 class hub_scene
 {
@@ -31,6 +31,7 @@ private:
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 48> _sprites;
     int _cursor = 0;
+    unsigned _frames = 0;          // Mixed into the run seed
 
     [[nodiscard]] bool _update_debug_grants();
     void _redraw();
