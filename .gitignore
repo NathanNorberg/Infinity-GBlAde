@@ -6,3 +6,9 @@ build/
 
 # Reference images (other games): style study only, never committed
 references/
+
+# Host-built test tools
+tools/balance/report
+tools/headless/run
+tools/headless/lib/
+tools/headless/shots/

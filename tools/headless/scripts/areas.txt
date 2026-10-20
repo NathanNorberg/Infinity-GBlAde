@@ -1,0 +1,23 @@
+# Every castle area in order, using the area screen's debug jump (Select + R), then the
+# God King duel. Run with: tools/headless/run.sh tools/headless/scripts/areas.txt
+wait 90
+tap A
+wait 60
+tap A
+wait 70
+shot 01_gate
+hold SELECT+R 2
+wait 80
+shot 02_next
+hold SELECT+R 2
+wait 80
+shot 03_next
+hold SELECT+R 2
+wait 80
+shot 04_next
+hold SELECT+R 2
+wait 80
+shot 05_throne_room
+tap A
+wait 70
+shot 06_god_king

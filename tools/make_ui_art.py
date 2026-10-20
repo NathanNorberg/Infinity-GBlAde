@@ -278,6 +278,92 @@ def make_menu_frame():
     return image
 
 
+def make_area_band():
+    """The area screen's title band: a dark stone strip across the top 26 rows of the screen,
+    behind the area name and status line, edged in gold so it reads as part of the HUD."""
+    image = Image(256, 256, FRAME_PALETTE)
+    top, bottom = 48, 48 + 26
+    for y in range(top, bottom):
+        for x in range(256):
+            image.set(x, y, 1 if (y - top) < 20 or (x + y) % 2 else 2)      # Fades out at the bottom edge
+    for x in range(256):
+        image.set(x, bottom, 6)
+        image.set(x, bottom + 1, 5)
+    return image
+
+
+# ---------------------------------------------------------------------------------------------
+# Title logo: "INFINITY" over a larger "GBLADE" in beveled gold, on its own background so the
+# title screen can dim the castle without dimming the name. Screen rows 6-54 (BG rows 54-102).
+# ---------------------------------------------------------------------------------------------
+
+LOGO_PALETTE = art_style.palette(
+    ("outline", (0, 1)),                                  # 1-2 outline and shadow
+    ("gold", (0, 1, 2, 3, 4)),                            # 3-7 letters, dark to light
+    ("steel", (2, 4)),                                    # 8-9 rule highlights
+)
+
+LOGO_GLYPHS = {
+    "I": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "#####"],
+    "N": ["#...#", "##..#", "#.#.#", "#.#.#", "#..##", "#...#", "#...#"],
+    "F": ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+    "T": ["#####", "..#..", "..#..", "..#..", "..#..", "..#..", "..#.."],
+    "Y": ["#...#", "#...#", ".#.#.", "..#..", "..#..", "..#..", "..#.."],
+    "G": [".####", "#....", "#....", "#.###", "#...#", "#...#", ".###."],
+    "B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    "A": [".###.", "#...#", "#...#", "#####", "#...#", "#...#", "#...#"],
+    "D": ["####.", "#...#", "#...#", "#...#", "#...#", "#...#", "####."],
+    "E": ["#####", "#....", "#....", "####.", "#....", "#....", "#####"],
+}
+
+
+def draw_logo_word(image, word, top, scale, spacing):
+    width = len(word) * (5 * scale + spacing) - spacing
+    left = 128 - width // 2
+    height = 7 * scale
+    for index, letter in enumerate(word):
+        glyph = LOGO_GLYPHS[letter]
+        x0 = left + index * (5 * scale + spacing)
+        for gy, row in enumerate(glyph):
+            for gx, cell in enumerate(row):
+                if cell != "#":
+                    continue
+                for dy in range(scale):
+                    for dx in range(scale):
+                        y = top + gy * scale + dy
+                        t = (y - top) / height                       # Gold runs light at the top
+                        color = 7 if t < 0.15 else 6 if t < 0.45 else 5 if t < 0.75 else 4
+                        if dy == scale - 1 and gy < 6 and glyph[gy + 1][gx] != "#":
+                            color = 3                                # Shaded underside of each stroke
+                        image.set(x0 + gx * scale + dx, y, color)
+    return left, left + width
+
+
+def make_title_logo():
+    image = Image(256, 256, LOGO_PALETTE)
+    small_left, small_right = draw_logo_word(image, "INFINITY", 56, 2, 2)
+    draw_logo_word(image, "GBLADE", 76, 3, 3)
+
+    # Drop shadow down-right, then a 1 px outline around everything.
+    letters = [(x, y) for y in range(50, 106) for x in range(256) if image.get(x, y) >= 3]
+    for x, y in letters:
+        if image.get(x + 1, y + 1) == 0:
+            image.set(x + 1, y + 1, 2)
+    image.outline(1, (0, 48, 256, 110))
+
+    # Gold rules either side of "INFINITY", ending in a small diamond.
+    for x0, x1 in ((small_left - 32, small_left - 6), (small_right + 6, small_right + 32)):
+        for x in range(x0, x1):
+            image.set(x, 62, 6)
+            image.set(x, 63, 4)
+        for tip in (x0, x1):
+            for d in range(-2, 3):
+                image.set(tip + d, 62 + (2 - abs(d)) - 2, 7)
+                image.set(tip + d, 63 - (2 - abs(d)) + 2, 4)
+    return image
+
+
 def main():
     outputs = [
         ("hp_bar", make_bars(), 8),
@@ -292,7 +378,11 @@ def main():
 
     make_menu_frame().save_bmp(os.path.join(GRAPHICS_DIR, "menu_frame.bmp"))
     write_json("menu_frame", '{\n    "type": "regular_bg",\n    "bpp_mode": "bpp_4"\n}\n')
-    print("Wrote the HUD, markers and menu frame to graphics/")
+    make_title_logo().save_bmp(os.path.join(GRAPHICS_DIR, "title_logo.bmp"))
+    write_json("title_logo", '{\n    "type": "regular_bg",\n    "bpp_mode": "bpp_4"\n}\n')
+    make_area_band().save_bmp(os.path.join(GRAPHICS_DIR, "area_band.bmp"))
+    write_json("area_band", '{\n    "type": "regular_bg",\n    "bpp_mode": "bpp_4"\n}\n')
+    print("Wrote the HUD, markers, menu frame, area band and title logo to graphics/")
 
     if "--preview" in sys.argv:
         import subprocess

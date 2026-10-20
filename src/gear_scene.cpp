@@ -16,18 +16,18 @@ namespace igb
 namespace
 {
     // Screen origin is the center.
-    constexpr int title_x = -112;
-    constexpr int gold_x = 112;
-    constexpr int top_y = -70;
+    constexpr int title_x = -108;
+    constexpr int gold_x = 108;
+    constexpr int top_y = -68;
     constexpr int tabs_y = -56;
     constexpr int name_x = -104;
-    constexpr int stat_x = 16;
-    constexpr int status_x = 112;
+    constexpr int stat_x = 22;
+    constexpr int status_x = 108;
     constexpr int first_row_y = -42;
     constexpr int row_spacing = 11;
     constexpr int details_y = 48;
     constexpr int details_spacing = 10;
-    constexpr int help_y = 70;
+    constexpr int help_y = 68;
 
     using text_line = bn::string<56>;
 
@@ -57,11 +57,22 @@ namespace
             break;
 
         case item_slot::ARMOR:
-            stream << "-" << item.reduction;
-            break;
-
         case item_slot::HELMET:
-            stream << "-" << item.reduction << " +" << item.max_hp_bonus << "hp";
+            // Only the parts the item has: "-2", "+10hp", "-1 +25hp", or "none" for the starters.
+            if(item.reduction > 0)
+            {
+                stream << "-" << item.reduction;
+            }
+
+            if(item.max_hp_bonus > 0)
+            {
+                stream << (item.reduction > 0 ? " +" : "+") << item.max_hp_bonus << "hp";
+            }
+
+            if(item.reduction == 0 && item.max_hp_bonus == 0)
+            {
+                stream << "none";
+            }
             break;
 
         default:

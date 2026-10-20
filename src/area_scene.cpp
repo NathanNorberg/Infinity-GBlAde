@@ -5,6 +5,7 @@
 
 #include "bn_sprite_items_arrows.h"
 #include "bn_sprite_items_markers.h"
+#include "bn_regular_bg_items_area_band.h"
 
 #include "area_art.h"
 #include "castle_run.h"
@@ -60,9 +61,11 @@ area_scene::area_scene(hero_profile& profile, int active_slot) :
     _profile(profile),
     _active_slot(active_slot),
     _bg(area_backgrounds[profile.run_area]->create_bg(0, 0)),
+    _band_bg(bn::regular_bg_items::area_band.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font),
     _cursor_arrow(bn::sprite_items::arrows.create_sprite(0, 0, cursor_arrow_frame))
 {
+    _band_bg.set_z_order(-1);          // In front of the area background, behind the text
     const castle::area& area = run::current_area(profile);
 
     for(int index = 0; index < area.hotspot_count; ++index)

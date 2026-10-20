@@ -122,27 +122,114 @@ class Scene:
         for x in range(int(cx - half - 3), int(cx + half + 4)):
             self.put(x, top + height, frame_ramp, 0.65)                   # Sill
 
-    def floor(self, ramp, y0=HORIZON, tiles=True, checker=False, base=0.35):
-        """Floor in perspective: tile rows widen toward the viewer, joints converge on VANISH."""
+    def floor(self, ramp, y0=HORIZON, style="flag", base=0.35, skirting=True):
+        """Floor in perspective: tile rows widen toward the viewer, joints converge on VANISH.
+
+        style: "flag" (worn flagstones, each a little different, some cracked), "checker" (two
+        tones of polished stone), "cobble" (rounded cobbles), "gravel" (speckled, no joints) or
+        "plank" (boards running toward the viewer). A lit ledge and a shadow line along the
+        wall's foot (skirting) seat the wall on the floor."""
         rows = []
         y, step = y0, 3.0
         while y < 256:
-            rows.append(int(y))
+            rows.append(y)
             y += step
             step *= 1.28
+        rows.append(y)
+
+        def tile_noise(column, row, salt=0):
+            return ((column * 73856093) ^ (row * 19349663) ^ (salt * 83492791)) % 1000 / 1000
+
         for yy in range(y0, 256):
             depth = (yy - y0) / (256 - y0)
-            row_index = sum(1 for r in rows if r <= yy) - 1
+            row = max(index for index, r in enumerate(rows) if r <= yy)
+            v = (yy - rows[row]) / max(1.0, rows[row + 1] - rows[row])          # 0 far edge .. 1 near edge
             for x in range(256):
-                # Column of the tile this pixel is in, measured along lines from the vanishing point.
                 spread = (x - VANISH[0]) / max(1.0, yy - VANISH[1])
-                column = int(math.floor(spread * 2.2))
-                value = base + 0.3 * depth
-                if checker and (column + row_index) % 2:
+                u = spread * 2.2
+                column = int(math.floor(u))
+                fu = u - column
+                joint_width = 0.035 * (1 + depth)
+                value = base + 0.3 * depth - 0.12 * abs(spread) / 3              # Darker toward the sides
+                noise = tile_noise(column, row)
+
+                if style == "gravel":
+                    speck = self.random.random()
+                    value += 0.18 if speck > 0.93 else -0.12 if speck < 0.08 else 0.0
+                    self.put(x, yy, ramp, value)
+                    continue
+
+                if style == "plank":
+                    boards = u * 1.6
+                    board = int(math.floor(boards))
+                    fb = boards - board
+                    grain = 0.06 * math.sin(fb * 19 + board * 2.3 + 0.6 * math.sin(yy * 0.15 + board))   # Streaks along the board
+                    stagger = (row + board) % 3 == 0 and v < 0.12
+                    value += (tile_noise(board, 0) - 0.5) * 0.12 + grain
+                    if fb < joint_width * 1.6 or stagger:
+                        value -= 0.22
+                    elif fb < joint_width * 3.5:
+                        value += 0.08                                            # Lit board edge
+                    self.put(x, yy, ramp, value)
+                    continue
+
+                if style == "cobble":
+                    half_row = 1 if v >= 0.5 else 0                              # Two courses of cobbles per tile row
+                    course = row * 2 + half_row
+                    cu = u * 4 + (0.5 if course % 2 else 0.0)
+                    cv = v * 2 - half_row
+                    cell_u = cu - math.floor(cu)
+                    d = math.hypot((cell_u - 0.5) * 1.6, (cv - 0.5) * 1.3)
+                    value += (tile_noise(int(math.floor(cu)), course, 3) - 0.5) * 0.16
+                    if d > 0.68:
+                        value -= 0.24                                            # Gaps between stones
+                    else:
+                        value += 0.14 * (0.5 - cv) + 0.08 * (0.5 - cell_u)       # Rounded, lit from above-left
+                    self.put(x, yy, ramp, value)
+                    continue
+
+                # Flagstones and checker.
+                value += (noise - 0.5) * 0.14
+                if style == "checker" and (column + row) % 2:
                     value -= 0.18
-                if tiles and (yy in rows or abs(spread * 2.2 - round(spread * 2.2)) < 0.035 * (1 + depth)):
-                    value -= 0.22                                         # Joints
+                on_joint = v < 0.08 + 0.04 * (1 - depth) or fu < joint_width or fu > 1 - joint_width * 0.5
+                if on_joint:
+                    value -= 0.24
+                elif v < 0.25:
+                    value += 0.06                                                # Lit far bevel
+                elif v > 0.88:
+                    value -= 0.06                                                # Shadowed near bevel
+                if style == "flag":
+                    if noise > 0.9 and 0.2 < v < 0.75 and abs(fu - (0.3 + 0.5 * v)) < joint_width * 0.6:
+                        value -= 0.2                                             # Crack across the stone
+                    if noise < 0.15 and math.hypot(fu - 0.6, v - 0.55) < 0.22 and (x + yy) % 2:
+                        value -= 0.08                                            # Worn patch
+                if style == "checker" and (column + row) % 2 == 0 and 0.3 < v < 0.5 and 0.2 < fu < 0.45:
+                    value += 0.1 if (x + yy) % 2 else 0.0                        # Polished sheen
                 self.put(x, yy, ramp, value)
+
+        if skirting:
+            for x in range(256):
+                self.put(x, y0 - 3, ramp, base + 0.35)                           # Lit ledge
+                self.put(x, y0 - 2, ramp, base + 0.15)
+                self.put(x, y0 - 1, ramp, base - 0.15)
+                if x % 2 == 0:
+                    self.put(x, y0, ramp, base - 0.25)                           # Shadow where wall meets floor
+
+    def floor_glow(self, x, ramp, value, width=14):
+        """A dithered pool of light on the floor below a window or torch, spreading toward the viewer."""
+        for yy in range(HORIZON + 2, 256):
+            depth = (yy - HORIZON) / (256 - HORIZON)
+            spread = (x - VANISH[0]) / (HORIZON - VANISH[1]) * (yy - VANISH[1])
+            cx = VANISH[0] + spread
+            half = width * (0.4 + depth)
+            for xx in range(int(cx - half), int(cx + half) + 1):
+                if 0 <= xx < 256 and (xx + yy) % 2 == 0 and depth < 0.7:
+                    current = self.image.get(xx, yy)
+                    if current in self.ramps[ramp]:
+                        step = self.ramps[ramp].index(current)
+                        bumped = min(len(self.ramps[ramp]) - 1, step + 1)
+                        self.image.set(xx, yy, self.ramps[ramp][bumped] if value > 0 else current)
 
     def banner(self, x, y, width, length, cloth, trim):
         for yy in range(y, y + length):
@@ -188,7 +275,7 @@ R = art_style.ramp
 def make_gate():
     scene = Scene([("sky", R("night", (0, 1, 2, 3))), ("stone", R("stone")), ("moon", R("ice", (3, 4))),
                    ("fire", R("fire", (1, 2, 3, 4)))])
-    scene.sky(0, 100, "sky", stars=40, moon=(196, 58, 9))
+    scene.sky(0, 100, "sky", stars=40, moon=(230, 84, 8))          # Rising behind the battlements at the right edge, clear of all text
     scene.bricks(0, 100, 256, HORIZON, "stone", base=0.38)
     for x in range(0, 256, 20):                                           # Battlements
         for y in range(88, 100):
@@ -203,7 +290,9 @@ def make_gate():
         for y in range(116, 124):
             scene.put(x, y, "stone", 0.2)                                 # Torch brackets
         scene.flame(x, 113)
-    scene.floor("stone", base=0.25)                                       # Cobbled courtyard
+    scene.floor("stone", style="cobble", base=0.25)                       # Cobbled courtyard
+    for x in (82, 174):
+        scene.floor_glow(x, "stone", 1, 10)                               # Torchlight on the cobbles
     return scene
 
 
@@ -225,13 +314,21 @@ def make_garden():
         y = 70 - int(10 * math.sin((x - 98) / 60 * math.pi))
         for yy in range(y, y + 4):
             scene.put(x, yy, "stone", 0.6)
-    scene.floor("stone", tiles=False, base=0.2)                           # Gravel path
+    scene.floor("stone", style="gravel", base=0.2, skirting=False)        # Gravel path
     for y in range(HORIZON, 256):                                         # Grass verges
         depth = (y - HORIZON) / (256 - HORIZON)
         edge = 30 + 90 * depth
         for x in range(256):
             if abs(x - 128) > edge:
                 scene.put(x, y, "leaf", 0.25 + 0.2 * depth + scene.random.uniform(-0.08, 0.08))
+    for row_y in (150, 160, 174, 194, 222):                               # Stepping stones up the path
+        depth = (row_y - HORIZON) / (256 - HORIZON)
+        rx, ry = 10 + 26 * depth, 2 + 7 * depth
+        for y in range(int(row_y - ry), int(row_y + ry) + 1):
+            for x in range(int(128 - rx), int(128 + rx) + 1):
+                d = ((x - 128) / rx) ** 2 + ((y - row_y) / ry) ** 2
+                if d <= 1:
+                    scene.put(x, y, "stone", 0.15 if d > 0.75 and y > row_y else 0.55 + 0.2 * (row_y - y) / ry)
     return scene
 
 
@@ -258,7 +355,8 @@ def make_barracks():
             for y in range(64, 72):
                 scene.put(spear, y, "steel", 0.4 + 0.1 * (y - 64) / 8)
     scene.flame(128, 54)                                                  # Hanging lantern
-    scene.floor("stone", base=0.3)
+    scene.floor("wood", style="plank", base=0.3)
+    scene.floor_glow(128, "wood", 1, 18)                                  # Lantern light
     return scene
 
 
@@ -272,7 +370,9 @@ def make_great_hall():
         scene.pillar(x, 0, HORIZON, 18, "stone", 0.5)
     for x in (42, 98, 150, 206):
         scene.banner(x, 50, 12, 44, "red", "gold")
-    scene.floor("stone", checker=True, base=0.3)
+    scene.floor("stone", style="checker", base=0.3)
+    for x in (72, 184):
+        scene.floor_glow(x, "stone", 1, 12)                               # Moonlight through the windows
     return scene
 
 
@@ -296,24 +396,33 @@ def make_throne_approach():
         half = 18 + 60 * depth
         for x in range(int(128 - half), int(128 + half) + 1):
             scene.put(x, y, "red", 0.4 + 0.3 * depth - 0.2 * abs(x - 128) / half)
+        for x in range(int(128 - half), int(128 + half) + 1):
+            across = abs(x - 128) / half
+            if 0.78 < across < 0.84:
+                scene.put(x, y, "gold", 0.3)                              # Inner border
+            v = (y - HORIZON) ** 0.6 * 1.6                                # Pattern rows widen toward the viewer
+            if abs((x - 128) / half * 4) + abs((v % 6) - 3) < 1.2 and across < 0.5:
+                scene.put(x, y, "gold", 0.3)                              # Diamonds down the middle
         scene.put(128 - half, y, "gold", 0.8)
         scene.put(128 + half, y, "gold", 0.8)
+    for x in (92, 164):
+        scene.floor_glow(x, "stone", 1, 8)                                # Candlelight
     return scene
 
 
 def make_throne_room():
-    scene = Scene([("wall", R("royal")), ("gold", R("gold", (2, 3, 4))), ("red", R("crimson", (1, 2, 3))),
+    scene = Scene([("wall", R("dark_steel")), ("gold", R("gold", (2, 3, 4))), ("red", R("crimson", (1, 2, 3))),
                    ("glass_a", R("ice", (2, 4))), ("glass_b", R("royal", (4,)))])
     scene.bricks(0, 0, 256, HORIZON, "wall", width=24, height=12, base=0.3)
     scene.arch_window(128, 50, 40, 18, ["glass_a", "glass_b", "glass_a"], "wall")
     for x in range(98, 159):                                              # Throne back and dais
-        for y in range(70, 132):
+        for y in range(86, 132):
             scene.put(x, y, "wall", 0.08 if 104 < x < 152 else 0.3)
     for x in range(98, 159):
-        scene.put(x, 70, "gold", 0.9)
-    for spike in (104, 116, 128, 140, 152):                              # Gilded crest on the throne
-        for y in range(58, 70):
-            for dx in range(-((y - 58) // 4), (y - 58) // 4 + 1):
+        scene.put(x, 86, "gold", 0.9)
+    for spike in (104, 116, 128, 140, 152):                              # Gilded crest, below the area title band
+        for y in range(74, 86):
+            for dx in range(-((y - 74) // 4), (y - 74) // 4 + 1):
                 scene.put(spike + dx, y, "gold", 0.6)
     for step in range(3):
         for y in range(132 + step * 4, 136 + step * 4):
@@ -321,14 +430,15 @@ def make_throne_room():
                 scene.put(x, y, "red" if y < 134 + step * 4 else "gold", 0.5)
     for x in (24, 232):
         scene.banner(x - 8, 50, 16, 64, "red", "gold")
-    scene.floor("wall", base=0.28)
+    scene.floor("wall", style="checker", base=0.25)
+    scene.floor_glow(128, "wall", 1, 16)                                  # Light from the window over the throne
     return scene
 
 
 def make_title():
     scene = Scene([("sky", R("night")), ("castle", R("outline", (0, 2, 4))), ("moon", R("ice", (3, 4))),
                    ("window", R("fire", (3, 4)))])
-    scene.sky(0, 256, "sky", stars=70, moon=(176, 70, 16))
+    scene.sky(0, 256, "sky", stars=70, moon=(38, 84, 12))            # Upper left, clear of the logo
     # The castle silhouetted against the night: towers, battlements, lit windows.
     towers = [(40, 120, 18), (80, 96, 14), (128, 70, 22), (176, 100, 14), (214, 124, 18)]
     for x, top, half in towers:

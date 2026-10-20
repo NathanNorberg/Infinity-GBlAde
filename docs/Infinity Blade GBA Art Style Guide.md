@@ -68,26 +68,30 @@ Every image the game uses, its size and frame layout. Final art must keep these 
 | Image | Size | Frames / notes |
 | --- | --- | --- |
 | hero | 64x64 sprite | 5 frames: idle, dodge (leans right, flipped for left), duck, block (shield raised), parry/slash (sword to the upper left, flipped for right) |
-| enemy_idle, enemy_wu_*, enemy_st_* | 256x256 backgrounds | 19 poses: idle, then a wind-up (wu) and strike (st) for each of 9 attacks. The figure stands centered on column 128, about 112 px tall, feet on row 184 |
-| enemy_palette_brute / _duelist / _god_king | 8x8 palette-only images | Palette swaps for the enemy poses |
-| arena | 256x256 background | The duel arena (one per area in task 9) |
-| area_gate, area_garden, area_barracks, area_great_hall, area_throne_approach, area_throne_room | 256x256 backgrounds | Area screens; horizon at row 120 |
+| enemy_<kit>_idle, \_wu\_\*, \_st\_\*, \_fall\_stagger, \_fall\_kneel | 256x256 backgrounds | Per kit (knight, brute, duelist, god_king): idle, a wind-up (wu) and strike (st) for each of 9 attacks, and two defeat poses. The figure stands centered on column 128, feet on rows 186-193. Every kit shares one palette layout (1 outline, 2-6 armor, 7 visor, 8-10 blade, 11-13 cloth, 14 leather, 15 trim) |
+| enemy_look_<id> | 8x8 palette-only images | One per named enemy (14), applied over its kit's poses |
+| area_gate, area_garden, area_barracks, area_great_hall, area_throne_approach, area_throne_room | 256x256 backgrounds | Each area's duel arena and area screen; the wall meets the floor at row 144 |
+| title | 256x256 background | The castle at night behind the title screen |
+| menu_frame | 256x256 background | Gold-trimmed border around the gate, character and equipment screens; transparent inside |
+| area_band | 256x256 background | Dark title band across the top 26 rows of the area and story screens |
+| title_logo | 256x256 background | "INFINITY GBLADE" in beveled gold, on its own layer so the castle behind it can be dimmed |
 | markers | 16x16 sprite | 11 frames: duel, duel won, gold, gold taken, chest, chest open, locked chest, exit, exit blocked, God King, elite |
 | telegraph | 8x8 sprite | 2 frames: normal (gold), unblockable (red) |
 | sparks | 16x16 sprite | 8 frames: gold burst (4), blue burst (4) |
 | digits | 8x8 sprite | 44 frames: 0-9 and + in white, gold, red and green |
 | arrows | 16x16 sprite | 12 frames: up, down, left, right in dim, lit and mistake red |
 | hp_bar | 8x8 sprite | 27 frames: 0-8 px of fill for the hero (green), enemy (red) and super (gold) bars |
+| bar_caps | 8x8 sprite | 2 frames: left and right gold end caps for the bars |
 | shield_pip, charge_orb | 8x8 sprites | 2 frames each: full, empty |
 | common_variable_8x8_font | 8x8 sprite font | From Butano; may be replaced by a custom font with the HUD |
 
 ## The pipeline
 
-1. **Generate**: art is made in code, using the ramps in `tools/art_style.py`: `make_hero_art.py` (hero), `make_enemy_art.py` (enemy kits, poses and named looks), `make_background_art.py` (areas and title), `make_ui_art.py` (bars, caps, pips, orbs, markers, menu frame) and `make_placeholder_art.py` (the rest: telegraphs, sparks, digits, arrows).
-2. **Preview**: `python3 tools/preview_art.py <images> -o sheet.png` renders frames; `--duel <background>` mocks the duel screen.
+1. **Generate**: art is made in code, using the ramps in `tools/art_style.py`: `make_hero_art.py` (hero), `make_enemy_art.py` (enemy kits, poses and named looks), `make_background_art.py` (areas and title), `make_ui_art.py` (bars, caps, pips, orbs, markers, menu frame, area band, title logo) and `make_placeholder_art.py` (the rest: telegraphs, sparks, digits, arrows).
+2. **Preview**: `python3 tools/preview_art.py <images> -o sheet.png` renders frames; `--duel <background>` mocks the duel screen. To see the real thing, `tools/headless/run.sh <script>` plays the built ROM headlessly and saves screenshots (scripts in `tools/headless/scripts/`).
 3. **Review**: preview sheets go to the user before anything changes in the game.
 4. **Build**: `make`, then check in mGBA and on hardware.
 
-**Bringing in outside art:** `python3 tools/png_to_gba.py <image.png> <name> --type sprite|bg` converts any image (a sketch, or a licensed asset pack) to a game-ready 16-color BMP with its Butano settings, enforcing the sizes above. `--palette-from graphics/enemy_idle.bmp` maps an enemy pose onto the shared enemy palette, so palette swaps keep working.
+**Bringing in outside art:** `python3 tools/png_to_gba.py <image.png> <name> --type sprite|bg` converts any image (a sketch, or a licensed asset pack) to a game-ready 16-color BMP with its Butano settings, enforcing the sizes above. `--palette-from graphics/enemy_knight_idle.bmp` maps an enemy pose onto the shared enemy palette, so palette swaps keep working.
 
 **References** go in `references/` in the project folder. That folder is kept out of git, since screenshots of other games shouldn't be published with the project.

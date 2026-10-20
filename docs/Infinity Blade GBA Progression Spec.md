@@ -82,7 +82,7 @@ Nearly everything carries over between generations; only the run itself resets.
 | Bloodline count | Enemy roster (rerolled per area) |
 
 - **Death:** losing any duel ends the run and costs 10% of carried gold (a starting value to tune). A short cutscene shows the next generation getting up and walking down the path to the gate. The hero uses the same sprite every generation.
-- **God King scaling:** fixed at level 50 for the first cycle and never adjusts to the player; only leveling and gear close the gap. Each win raises him for the next cycle.
+- **God King scaling:** fixed at level 50 for the first cycle and never adjusts to the player; only leveling and gear close the gap. Each win raises him, and every castle enemy, for the next cycle (decided Oct 20: without it a full clear always paid the same XP and leveling stalled).
 - **God King difficulty:** he must feel like a brutal boss. No one should beat him on the first bloodline without exceptional reflexes, and that's intended: do not soften his wind-ups, feints or unblockables to make a fresh hero competitive (decided Oct 13). Testing uses the debug overlay's invincibility switch instead.
 - **Victory:** beating the God King shows a short ending, then starts a new, harder cycle with the same hero (new game plus).
 
@@ -111,7 +111,7 @@ The game saves after every duel and at every shop visit. The checksum lets it fa
 - **The God King:** his own enemy type, with his own colors, HP and move set (every attack including rising slashes, heavy on feints and unblockables), on top of the God King tier (decided Oct 15).
 - **Area screens:** each area is one screen with its own background and 2 to 4 hotspot markers; the D-pad moves between them and A acts (decided Oct 15).
 - **Teaching order:** the gate throws Knights and Duelists only (no Brute); the fork paths bring diagonal slashes but no unblockables; the great hall brings the first unblockables (decided Oct 15).
-- **Castle tuning (milestone 4 starting values, in include/castle.h and include/tuning.h):** the great hall uses a new "Hall captain" tier (hall pace, 10% unblockables); the throne approach's elite guard drops a key half the time, and the great hall holds the locked chest, so keys carry from one bloodline to the next; plain chests hold an item 40% of the time (up to the area's price cap), locked chests an unowned item worth 4,000 or more; the God King gains +25% HP and +10% damage per cycle; death costs 10% of gold.
+- **Castle tuning (milestone 4 starting values, in include/castle.h and include/tuning.h):** the great hall uses a new "Hall captain" tier (hall pace, 10% unblockables); the throne approach's elite guard drops a key half the time, and the great hall holds the locked chest, so keys carry from one bloodline to the next; plain chests hold an item 40% of the time (up to the area's price cap), locked chests an unowned item worth 4,000 or more; each cycle adds +20% HP (+25% for the God King), +10% damage and +30% XP and gold to every enemy (Oct 20); death costs 10% of gold.
 
 ## Open questions
 

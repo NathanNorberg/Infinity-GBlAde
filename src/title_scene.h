@@ -29,6 +29,7 @@ private:
     hero_profile& _profile;
     int& _active_slot;
     bn::regular_bg_ptr _arena_bg;      // The castle at night
+    bn::regular_bg_ptr _logo_bg;       // The game's name in gold, not dimmed with the castle
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 48> _sprites;
     save::slot_summary _slots[save::slot_count];

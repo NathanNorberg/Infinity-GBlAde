@@ -353,6 +353,9 @@ void duel_scene::_check_result()
         }
 
         _hud.show_victory(_rewards, _profile);
+
+        bn::bg_palette_ptr arena_palette = _arena_bg.palette();
+        arena_palette.set_fade(bn::colors::black, bn::fixed(tuning::victory_dim_percent) / 100);
         sfx::play(_rewards.levels_gained > 0 ? bn::sound_items::sfx_level_up : bn::sound_items::sfx_victory);
     }
     else if(_hero.hp() == 0)

@@ -31,6 +31,7 @@ private:
     hero_profile& _profile;
     int _active_slot;
     bn::regular_bg_ptr _bg;
+    bn::regular_bg_ptr _band_bg;       // Dark title band behind the area name (graphics/area_band.bmp)
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, castle::max_hotspots> _markers;
     bn::sprite_ptr _cursor_arrow;

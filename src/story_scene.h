@@ -26,6 +26,7 @@ public:
 private:
     scene_id _which;
     bn::regular_bg_ptr _bg;
+    bn::regular_bg_ptr _band_bg;       // Dark title band behind the text (graphics/area_band.bmp)
     bn::sprite_ptr _hero;
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 40> _sprites;

@@ -119,7 +119,7 @@ constexpr enemy_type type_duelist = { "Duelist", 440, 80, 75, 80, 50, 200, 1, 2,
 
 // God King: his own type for the throne room. Throws everything (rising slashes most of all),
 // hits hard, and leans on unblockables and feints. Fixed at "level 50" on the first cycle;
-// each cycle after a win makes him stronger (see god_king_*_per_cycle).
+// like every enemy he grows each cycle, and his HP grows faster (see *_per_cycle below).
 constexpr enemy_type type_god_king = { "God King", 1200, 100, 90, 120, 120, 125, 0, 3,
                                        { 2, 2, 2, 2, 3, 2, 2, 3, 3 }, 150 };
 
@@ -129,8 +129,14 @@ inline constexpr const enemy_type* enemy_types[] = {
 };
 
 constexpr int god_king_type_index = 3;
-constexpr int god_king_hp_percent_per_cycle = 25;      // New game plus: more HP each cycle
-constexpr int god_king_damage_percent_per_cycle = 10;  // ...and harder hits
+// New game plus: every castle enemy grows with each cycle (each God King win), and pays more,
+// so early areas stay worth fighting and levels keep coming. Deaths don't advance the cycle.
+// Percentages add per cycle: cycle 3 (two wins) gives +40% HP, +20% damage, +60% XP and gold.
+// See docs/Infinity Blade GBA Balance Report.md for how this paces out.
+constexpr int enemy_hp_percent_per_cycle = 20;
+constexpr int god_king_hp_percent_per_cycle = 25;      // He grows a little faster than his guards
+constexpr int enemy_damage_percent_per_cycle = 10;
+constexpr int enemy_reward_percent_per_cycle = 30;     // XP and gold
 
 // Within a castle run, HP carries between duels; each win gives a little back.
 constexpr int win_heal_percent = 10;           // Of max HP
@@ -166,17 +172,20 @@ constexpr enemy_tier combine(const enemy_tier& tier, const enemy_type& type)
     return result;
 }
 
-// The God King grows stronger with each cycle (new game plus); other enemies don't change.
+// Every enemy grows stronger, and pays more, with each cycle (new game plus).
 constexpr enemy_tier scale_for_cycle(enemy_tier enemy, int type_index, int cycle)
 {
-    if(type_index == god_king_type_index)
-    {
-        enemy.hp_percent = 100 + cycle * god_king_hp_percent_per_cycle;
-        enemy.damage_percent = enemy.damage_percent * (100 + cycle * god_king_damage_percent_per_cycle) / 100;
-    }
-
+    int hp_step = type_index == god_king_type_index ? god_king_hp_percent_per_cycle : enemy_hp_percent_per_cycle;
+    enemy.hp_percent = enemy.hp_percent * (100 + cycle * hp_step) / 100;
+    enemy.damage_percent = enemy.damage_percent * (100 + cycle * enemy_damage_percent_per_cycle) / 100;
+    enemy.xp_reward = enemy.xp_reward * (100 + cycle * enemy_reward_percent_per_cycle) / 100;
+    enemy.gold_reward = enemy.gold_reward * (100 + cycle * enemy_reward_percent_per_cycle) / 100;
     return enemy;
 }
+
+static_assert(scale_for_cycle(combine(tier_gate_guard, type_knight), 0, 0).hp_percent == 100,
+              "The first cycle is unscaled");
+static_assert(scale_for_cycle(combine(tier_god_king, type_god_king), god_king_type_index, 2).hp_percent == 150);
 
 // ---------------------------------------------------------------------------------------------
 // Telegraph (placeholder flash and trail).
@@ -375,6 +384,7 @@ constexpr int enemy_kneel_frame = 14;          // A beaten enemy staggers, then 
 constexpr int enemy_fade_start = 40;           // ...then fades out
 constexpr int enemy_fade_frames = 40;
 constexpr int result_prompt_delay = 60;        // Before "Press START" appears on win/lose
+constexpr int victory_dim_percent = 55;        // The arena darkens behind the victory screen's text
 
 // Duel rewards (progression spec): bonuses on duel XP, earned anywhere in the duel.
 constexpr int perfect_sequence_xp_bonus = 25;  // Percent, for at least one perfect parry sequence

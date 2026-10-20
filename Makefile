@@ -46,7 +46,9 @@ DMGAUDIO    	:=  dmg_audio
 DMGAUDIOBACKEND	:=  default
 ROMTITLE    	:=  INFGBLADE
 ROMCODE     	:=  IGBA
-USERFLAGS   	:=  
+# Menus regenerate their text in one frame while the old sprites' tiles are still queued for
+# release, so a full page (every shield owned) needs more than Butano's default 128 tile items.
+USERFLAGS   	:=  -DBN_CFG_SPRITE_TILES_MAX_ITEMS=256
 USERCXXFLAGS	:=  
 USERASFLAGS 	:=  
 USERLDFLAGS 	:=  

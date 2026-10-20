@@ -7,6 +7,7 @@
 #include "bn_string.h"
 
 #include "bn_regular_bg_items_title.h"
+#include "bn_regular_bg_items_title_logo.h"
 
 #include "common_variable_8x8_sprite_font.h"
 #include "sfx.h"
@@ -17,8 +18,7 @@ namespace igb
 namespace
 {
     // Screen origin is the center.
-    constexpr int title_y = -44;
-    constexpr int subtitle_y = -30;
+    constexpr int subtitle_y = -18;         // Under the logo (graphics/title_logo.bmp)
     constexpr int slot_left_x = -64;
     constexpr int first_slot_y = -2;
     constexpr int slot_spacing = 14;
@@ -29,10 +29,12 @@ title_scene::title_scene(hero_profile& profile, int& active_slot) :
     _profile(profile),
     _active_slot(active_slot),
     _arena_bg(bn::regular_bg_items::title.create_bg(0, 0)),
+    _logo_bg(bn::regular_bg_items::title_logo.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font)
 {
     bn::bg_palette_ptr palette = _arena_bg.palette();
     palette.set_fade(bn::colors::black, bn::fixed(0.25));
+    _logo_bg.set_z_order(-1);              // In front of the castle, behind the text
 
     for(int slot = 0; slot < save::slot_count; ++slot)
     {
@@ -128,7 +130,6 @@ void title_scene::_redraw()
 {
     _sprites.clear();
     _text_generator.set_center_alignment();
-    _text_generator.generate(0, title_y, "INFINITY GBLADE", _sprites);
     _text_generator.generate(0, subtitle_y, "A duel at the castle gate", _sprites);
 
     bn::string<48> text;

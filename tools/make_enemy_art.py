@@ -282,7 +282,26 @@ def draw_torso(figure):
 
 
 def draw_back_cloth(figure):
-    """Cloth behind the body, drawn first: the God King's long cape."""
+    """Cloth behind the body, drawn first: the God King's long cape, or the Duelist's half-cape
+    hanging from the left shoulder down the back to mid-thigh."""
+    if KIT["cloth"] == "shoulder_cape":
+        sx, sy = SHOULDER_L
+        top, bottom = sy - 4, 160
+        for y in range(top, bottom):
+            t = (y - top) / (bottom - top)
+            inner = CX - 6 - 2 * t                                      # Tucked behind the body
+            outer = sx - 9 - 12 * math.sqrt(t)                          # Flaring out past the arm
+            hem = bottom - 6 * (1 - (inner - (CX - 6)) / 8)             # Hem dips toward the outside
+            for x in range(int(outer), int(inner) + 1):
+                across = (x - outer) / max(1.0, inner - outer)
+                if y > bottom - 7 + 6 * across:
+                    continue                                            # Angled hem, lower outside
+                fold = math.sin((x - outer) * 0.55 - t * 1.2)
+                value = 0.25 + 0.35 * across + 0.2 * fold - 0.15 * t
+                figure.put(x, y, shade(CLOTH, value))
+            if y < bottom - 6:
+                figure.put(int(outer), y, TRIM)                         # Gold edge down the outside
+        return
     if KIT["cloth"] != "royal_cape":
         return
     for y in range(98, 196):
@@ -299,26 +318,23 @@ def draw_back_cloth(figure):
 
 
 def draw_front_cloth(figure):
-    """Cloth over the shoulders, drawn after the pauldrons: the Duelist's short half-cape,
-    wrapped over the left shoulder and tapering to a point at the hip."""
+    """Cloth over the shoulders, drawn after the pauldrons: the top of the Duelist's half-cape,
+    draped over the left pauldron and pinned at the collar with a gold clasp."""
     if KIT["cloth"] != "shoulder_cape":
         return
     sx, sy = SHOULDER_L
-    top, bottom = sy - 7, sy + 26
-    for y in range(top, bottom):
-        t = (y - top) / (bottom - top)
-        # Rounded over the shoulder, then narrowing toward the point.
-        if t < 0.25:
-            half = 6 + 18 * t
-        else:
-            half = 10.5 * (1 - (t - 0.25) / 0.75) + 1
-        center = sx - 3 - 4 * t
-        for x in range(int(center - half), int(center + half) + 1):
-            across = (x - (center - half)) / max(1.0, 2 * half)
-            fold = math.sin((x - center) * 0.8 + t * 2)
-            value = 0.62 - 0.4 * across + 0.12 * fold - 0.15 * t
+    cx, cy, rx, ry = sx + 3, sy - 2, 12, 7
+    for y in range(int(cy - ry), int(cy + ry) + 1):
+        for x in range(int(cx - rx), int(cx + rx) + 1):
+            nx, ny = (x - cx) / rx, (y - cy) / ry
+            if nx * nx + ny * ny > 1 or ny > 0.35 - 0.6 * nx:
+                continue                                                # Lower edge slopes up toward the collar
+            fold = math.sin(x * 0.9 - y * 0.3)
+            value = 0.62 - 0.35 * ny - 0.2 * nx + 0.1 * fold
             figure.put(x, y, shade(CLOTH, value))
-        figure.put(center - half, y, TRIM)
+            if nx * nx + ny * ny > 0.75 and nx < 0:
+                figure.put(x, y, TRIM)                                  # Gold edge round the shoulder
+    figure.round_part(cx + 8, cy, 2.5, 2.5, (TRIM, TRIM, TRIM, ARMOR[4]))   # Clasp
 
 
 def draw_head(figure):

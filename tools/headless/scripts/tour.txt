@@ -1,0 +1,15 @@
+# A quick tour: title, new game in slot 1, the gate, the first castle area and a few seconds
+# of the first duel. Run with: tools/headless/run.sh tools/headless/scripts/tour.txt
+wait 90
+shot 01_title
+tap A
+wait 60
+shot 02_gate
+tap A
+wait 70
+shot 03_area
+tap A
+wait 60
+shot 04_duel
+wait 90
+shot 05_duel

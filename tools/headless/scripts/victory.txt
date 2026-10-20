@@ -1,0 +1,133 @@
+# Win the first duel with debug super refills (Select + Start), to check the victory screen.
+# Run with: tools/headless/run.sh tools/headless/scripts/victory.txt
+wait 90
+tap A
+wait 60
+tap A
+wait 70
+tap A
+wait 60
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 30
+shot 01_round
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 30
+shot 02_round
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 30
+shot 03_round
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 30
+shot 04_round
+wait 120
+shot 05_victory
+wait 120
+shot 06_victory

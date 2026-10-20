@@ -1,0 +1,83 @@
+# Jump to the throne room, beat the God King with debug super refills (Select + Start), and
+# follow the ending into new game plus. Run with: tools/headless/run.sh tools/headless/scripts/ending.txt
+wait 90
+tap A
+wait 60
+tap A
+wait 70
+hold SELECT+R 2
+wait 80
+hold SELECT+R 2
+wait 80
+hold SELECT+R 2
+wait 80
+hold SELECT+R 2
+wait 80
+tap A
+wait 60
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 20
+hold SELECT+START 2
+wait 4
+tap L
+wait 20
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+hold B+LEFT 2
+wait 14
+hold B+RIGHT 2
+wait 14
+hold B+UP 2
+wait 14
+hold B+DOWN 2
+wait 14
+wait 20
+shot 01_victory
+tap START
+wait 60
+shot 02_ending
+wait 120
+tap A
+wait 60
+shot 03_gate_next_cycle

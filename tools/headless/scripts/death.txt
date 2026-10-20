@@ -1,0 +1,26 @@
+# Lose the first duel by standing still, then follow the death scene to the next generation.
+# Run with: tools/headless/run.sh tools/headless/scripts/death.txt
+wait 90
+tap A
+wait 60
+tap A
+wait 70
+tap A
+wait 1500
+shot 01_late_duel
+wait 600
+shot 02_after
+tap START
+wait 90
+shot 03_after_start
+wait 120
+shot 04_story
+tap A
+wait 120
+shot 05_story
+tap A
+wait 120
+shot 06_next
+tap A
+wait 120
+shot 07_next

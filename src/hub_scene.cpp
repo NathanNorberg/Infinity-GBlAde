@@ -33,8 +33,9 @@ namespace
 
     // Screen origin is the center.
     constexpr int title_y = -64;
-    constexpr int status_y = -48;
-    constexpr int points_y = -38;
+    constexpr int status_y = -50;           // Level and XP
+    constexpr int purse_y = -40;            // Gold and keys
+    constexpr int points_y = -29;
     constexpr int menu_left_x = -40;
     constexpr int first_option_y = -16;
     constexpr int option_spacing = 13;
@@ -53,7 +54,7 @@ hub_scene::hub_scene(hero_profile& profile, int active_slot) :
 {
     bn::bg_palette_ptr palette = _arena_bg.palette();
     palette.set_fade(bn::colors::black, bn::fixed(0.6));
-    _frame_bg.set_priority(2);         // In front of the gate
+    _frame_bg.set_z_order(-1);         // In front of the gate, behind the text
     _redraw();
 }
 
@@ -158,11 +159,6 @@ void hub_scene::_redraw()
         bn::string<48> heading;
         bn::ostringstream stream(heading);
         stream << "THE CASTLE GATE    Bloodline " << _profile.bloodline;
-
-        if(_profile.cycle > 0)
-        {
-            stream << "    Cycle " << (_profile.cycle + 1);
-        }
         _text_generator.generate(0, title_y, heading, _sprites);
     }
 
@@ -181,10 +177,22 @@ void hub_scene::_redraw()
             stream << "XP " << _profile.xp << "/" << xp_to_next_level(_profile.level);
         }
 
-        stream << "    " << _profile.gold << " gold    Keys " << _profile.keys;
     }
 
     _text_generator.generate(0, status_y, text, _sprites);
+
+    text.clear();
+    {
+        bn::ostringstream stream(text);
+        stream << _profile.gold << " gold    Keys " << _profile.keys;
+
+        if(_profile.cycle > 0)
+        {
+            stream << "    Cycle " << (_profile.cycle + 1);
+        }
+    }
+
+    _text_generator.generate(0, purse_y, text, _sprites);
 
     if(_profile.unspent_points > 0)
     {

@@ -110,6 +110,8 @@ Content and polish break into eleven tasks, in build order (planned Oct 15). Cod
 - [x] HUD and menus: gold-framed bars, icons, menu frames and markers in the same style
 - [ ] Final tuning pass and the version 1 exit test: a full playthrough, on hardware
 
+**Task 11 prep (Oct 19):** two tools now back the tuning pass. `tools/balance/report` turns the data headers into `docs/Infinity Blade GBA Balance Report.md` (per-duel hits to kill and to die, gold and levels over a dozen runs, and runs needed per item unlock), and `tools/headless/run.sh` plays scripted inputs against the ROM and saves screenshots, which caught a crash on the equipment screen (fixed). The report showed leveling stalling: only the God King grew between runs, so a full clear always paid about 1,300 XP while levels kept costing more (about 150 full clears to level 30). Decided Oct 20: every castle enemy now scales with the cycle (+20% HP, +10% damage, +30% XP and gold per God King win; the God King +25% HP), which brings level 30 to about run 29 while fights stay about the same length.
+
 ## Placeholder art
 
 The prototype uses simple shapes so combat can be judged before any real pixel art exists.

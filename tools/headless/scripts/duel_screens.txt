@@ -1,0 +1,23 @@
+# The duel's overlays: pause, the spell prompt while R is held, and the debug overlay.
+# Run with: tools/headless/run.sh tools/headless/scripts/duel_screens.txt
+wait 90
+tap A
+wait 60
+tap A
+wait 70
+tap A
+wait 50
+tap START
+wait 20
+shot 01_pause
+tap START
+wait 20
+hold R 30
+shot 02_spell_prompt
+hold R+LEFT 4
+hold R 10
+shot 03_spell_step
+wait 60
+tap SELECT
+wait 10
+shot 04_debug_overlay

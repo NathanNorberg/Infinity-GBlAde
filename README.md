@@ -53,10 +53,12 @@ Debug controls elsewhere: at the gate, Select + A / B / R grant 1,000 gold / a l
   - `tools/make_hero_art.py`: the hero's poses
   - `tools/make_enemy_art.py`: enemy kits, poses and named looks, plus the generated `src/enemy_looks.h` and `src/enemy_pose_tables.h`
   - `tools/make_background_art.py`: area backgrounds and the title
-  - `tools/make_ui_art.py`: HP bars and caps, shield pips, charge orbs, castle markers and the menu frame
+  - `tools/make_ui_art.py`: HP bars and caps, shield pips, charge orbs, castle markers, the menu frame, the area title band and the title logo
   - `tools/make_placeholder_art.py`: telegraphs, sparks, digits, arrows and the rest of the small sprites
   - `tools/make_sounds.py`: the sound effects
 - `tools/preview_art.py` renders preview sheets and mock duel screens, and `tools/png_to_gba.py` converts PNGs to the game's 16-color BMPs.
+- `tools/balance/report` prints a balance report (enemy HP and damage per area, hits to kill and to die, levels, gold and shopping over a dozen runs, and how many runs each item unlock takes), built from the game's own headers. Build it with `tools/balance/build.sh`; the current output is `docs/Infinity Blade GBA Balance Report.md`.
+- `tools/headless/run.sh <script>` plays the built ROM without a window and saves screenshots, for checking screens after a change. It needs Homebrew's mGBA (`brew install mgba`); build it with `tools/headless/build.sh`. Scripts of held keys and screenshots live in `tools/headless/scripts/` (a quick tour, every area, menus and every gear page, duel overlays, a win, a death, and the God King ending).
 - `references/` (gitignored) holds reference images for style study only; no art is copied from them.
 
 The 8x8 font in `graphics/` and `include/` comes from Butano's `common` folder (zlib license).

@@ -4,6 +4,7 @@
 #include "bn_sstream.h"
 #include "bn_string.h"
 
+#include "bn_regular_bg_items_area_band.h"
 #include "bn_regular_bg_items_area_gate.h"
 #include "bn_regular_bg_items_area_throne_room.h"
 #include "bn_sprite_items_hero.h"
@@ -27,17 +28,19 @@ namespace
     constexpr bn::fixed_point ending_hero(0, 30);
     constexpr bn::fixed ending_scale = 0.7;
 
-    constexpr int first_line_y = -60;
-    constexpr int line_spacing = 12;
+    constexpr int first_line_y = -70;          // Both lines sit on the dark title band
+    constexpr int line_spacing = 11;
 }
 
 story_scene::story_scene(scene_id which, const hero_profile& profile) :
     _which(which),
     _bg((which == scene_id::ENDING ? bn::regular_bg_items::area_throne_room : bn::regular_bg_items::area_gate)
             .create_bg(0, 0)),
+    _band_bg(bn::regular_bg_items::area_band.create_bg(0, 0)),
     _hero(bn::sprite_items::hero.create_sprite(which == scene_id::ENDING ? ending_hero : walk_from)),
     _text_generator(common::variable_8x8_sprite_font)
 {
+    _band_bg.set_z_order(-1);              // In front of the scene, behind the text
     _text_generator.set_center_alignment();
     bn::string<48> text;
 
