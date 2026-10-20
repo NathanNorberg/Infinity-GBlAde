@@ -71,6 +71,7 @@ private:
     bn::vector<bn::sprite_ptr, player_bar_max_segments> _player_bar;
     bn::vector<bn::sprite_ptr, enemy_bar_segments> _enemy_bar;
     bn::vector<bn::sprite_ptr, super_bar_segments> _super_bar;
+    bn::vector<bn::sprite_ptr, 6> _caps;            // Two per bar
     bn::vector<bn::sprite_ptr, 4> _name_sprites;
     bn::vector<bn::sprite_ptr, 48> _result_sprites;
     bn::vector<bn::sprite_ptr, 8> _prompt_sprites;

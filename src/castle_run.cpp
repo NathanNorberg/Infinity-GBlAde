@@ -89,4 +89,10 @@ int duel_type(const hero_profile& profile, int hotspot)
     return area.types[roll(profile, hotspot, 1) % unsigned(area.type_count)];
 }
 
+int duel_look(const hero_profile& profile, int hotspot)
+{
+    const castle::area& area = current_area(profile);
+    return area.looks[roll(profile, hotspot, 1) % unsigned(area.type_count)];
+}
+
 }

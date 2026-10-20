@@ -816,6 +816,92 @@ def make_charge_orb():
     return img
 
 
+# ---------------------------------------------------------------------------------------------
+# Impact sparks: 16x16 sprite, 8 frames stacked vertically: a 4-frame gold burst (parries,
+# combo finishers) then a 4-frame blue burst (blocks). Each burst flashes, spreads and fades.
+# ---------------------------------------------------------------------------------------------
+
+SPARK_PALETTE = [
+    (255, 0, 255),    # 0 transparent
+    (255, 255, 255),  # 1 white core
+    (255, 230, 120),  # 2 gold
+    (240, 150, 40),   # 3 orange
+    (190, 240, 255),  # 4 pale blue
+    (80, 170, 255),   # 5 blue
+    (40, 90, 200),    # 6 deep blue
+]
+
+
+def make_sparks():
+    img = Image(16, 16 * 8, SPARK_PALETTE)
+    for burst, (core, mid, edge) in enumerate(((1, 2, 3), (1, 4, 5))):
+        for step in range(4):
+            oy = (burst * 4 + step) * 16
+            cx, cy = 8, oy + 8
+            reach = 2 + step * 2
+            color_ray = mid if step < 2 else edge
+            # Eight rays that lengthen, then break into dots as the burst fades.
+            for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1), (1, 1), (-1, -1), (1, -1), (-1, 1)):
+                length = reach if dx == 0 or dy == 0 else reach - 2
+                for r in range(1, max(2, length)):
+                    if step == 3 and r < length - 2:
+                        continue
+                    img.set(cx + dx * r, cy + dy * r, color_ray)
+            if step < 2:
+                img.rect(cx - 1 - step, cy - 1 - step, cx + 1 + step, cy + 1 + step, mid)
+                img.rect(cx - 1, cy - 1, cx + 1, cy + 1, core)
+    return img
+
+
+# ---------------------------------------------------------------------------------------------
+# Damage numbers: 8x8 sprite, 11 glyphs (0-9 and +) in 4 colors, stacked vertically:
+# frames 0..10 white (hits on the enemy), 11..21 gold (finishers, super, spells, burn),
+# 22..32 red (damage to the hero), 33..43 green (healing). Bold 5x7 glyphs with an outline.
+# ---------------------------------------------------------------------------------------------
+
+DIGIT_PALETTE = [
+    (255, 0, 255),    # 0 transparent
+    (10, 6, 10),      # 1 outline
+    (255, 255, 255),  # 2 white
+    (200, 200, 216),  # 3 white shade
+    (255, 220, 80),   # 4 gold
+    (220, 150, 30),   # 5 gold shade
+    (255, 80, 70),    # 6 red
+    (190, 30, 30),    # 7 red shade
+    (120, 240, 120),  # 8 green
+    (40, 170, 60),    # 9 green shade
+]
+
+DIGIT_GLYPHS = [
+    ["01110", "10001", "10011", "10101", "11001", "10001", "01110"],  # 0
+    ["00100", "01100", "00100", "00100", "00100", "00100", "01110"],  # 1
+    ["01110", "10001", "00001", "00010", "00100", "01000", "11111"],  # 2
+    ["11110", "00001", "00001", "01110", "00001", "00001", "11110"],  # 3
+    ["00010", "00110", "01010", "10010", "11111", "00010", "00010"],  # 4
+    ["11111", "10000", "11110", "00001", "00001", "10001", "01110"],  # 5
+    ["00110", "01000", "10000", "11110", "10001", "10001", "01110"],  # 6
+    ["11111", "00001", "00010", "00100", "01000", "01000", "01000"],  # 7
+    ["01110", "10001", "10001", "01110", "10001", "10001", "01110"],  # 8
+    ["01110", "10001", "10001", "01111", "00001", "00010", "01100"],  # 9
+    ["00000", "00100", "00100", "11111", "00100", "00100", "00000"],  # +
+]
+
+
+def make_digits():
+    colors = ((2, 3), (4, 5), (6, 7), (8, 9))
+    img = Image(8, 8 * len(DIGIT_GLYPHS) * len(colors), DIGIT_PALETTE)
+    for color_index, (fill, shade) in enumerate(colors):
+        for glyph_index, glyph in enumerate(DIGIT_GLYPHS):
+            oy = (color_index * len(DIGIT_GLYPHS) + glyph_index) * 8
+            for y, row in enumerate(glyph):
+                for x, bit in enumerate(row):
+                    if bit == "1":
+                        # Lower rows a shade darker for a little depth.
+                        img.set(1 + x, oy + y, shade if y >= 5 else fill)
+            img.outline(1, (0, oy, 8, oy + 8))
+    return img
+
+
 def make_shield_pip():
     img = Image(8, 16, PIP_PALETTE)
     for frame, (fill, shine) in enumerate(((2, 3), (4, 4))):
@@ -878,20 +964,14 @@ def main():
     arrows = make_arrows()
     charge_orb = make_charge_orb()
 
-    arena.save_bmp(os.path.join(GRAPHICS_DIR, "arena.bmp"))
-    for name, maker in AREA_MAKERS:
-        maker().save_bmp(os.path.join(GRAPHICS_DIR, name + ".bmp"))
-    make_markers().save_bmp(os.path.join(GRAPHICS_DIR, "markers.bmp"))
-    for name, img in enemy_poses:
-        img.save_bmp(os.path.join(GRAPHICS_DIR, "enemy_" + name + ".bmp"))
-    for name, img in make_enemy_type_palettes():
-        img.save_bmp(os.path.join(GRAPHICS_DIR, name + ".bmp"))
-    hero.save_bmp(os.path.join(GRAPHICS_DIR, "hero.bmp"))
+    # The arena and area backgrounds are drawn by tools/make_background_art.py; the HP bars,
+    # shield pips, charge orbs and markers by tools/make_ui_art.py.
+    make_sparks().save_bmp(os.path.join(GRAPHICS_DIR, "sparks.bmp"))
+    make_digits().save_bmp(os.path.join(GRAPHICS_DIR, "digits.bmp"))
+    # The enemy's poses and type palettes are drawn by tools/make_enemy_art.py.
+    # The final hero is drawn by tools/make_hero_art.py; the placeholder only feeds the preview.
     telegraph.save_bmp(os.path.join(GRAPHICS_DIR, "telegraph.bmp"))
-    shield_pip.save_bmp(os.path.join(GRAPHICS_DIR, "shield_pip.bmp"))
-    hp_bar.save_bmp(os.path.join(GRAPHICS_DIR, "hp_bar.bmp"))
     arrows.save_bmp(os.path.join(GRAPHICS_DIR, "arrows.bmp"))
-    charge_orb.save_bmp(os.path.join(GRAPHICS_DIR, "charge_orb.bmp"))
     print("Wrote arena, %d enemy poses, hero, telegraph and HUD sprites to graphics/" % len(enemy_poses))
 
     if "--preview" in sys.argv:

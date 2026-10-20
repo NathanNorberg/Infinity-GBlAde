@@ -3,3 +3,6 @@ build/
 *.gba
 *.sav
 .DS_Store
+
+# Reference images (other games): style study only, never committed
+references/

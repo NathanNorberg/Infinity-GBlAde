@@ -68,6 +68,26 @@ namespace
         return true;
     }
 
+    // A named enemy must wear the kit of the fighting style it's paired with.
+    constexpr bool looks_match_types()
+    {
+        for(const area& area : areas)
+        {
+            for(int type = 0; type < area.type_count; ++type)
+            {
+                int look_id = area.looks[type];
+
+                if(look_id < 0 || look_id >= look::look_count ||
+                   look::looks[look_id].kit != tuning::enemy_types[area.types[type]]->palette)
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     constexpr bool god_king_only_in_throne_room()
     {
         for(int index = 0; index < area_count; ++index)
@@ -88,6 +108,7 @@ namespace
 static_assert(areas_are_valid(), "A castle area has a bad tier, type, hotspot or treasure value");
 static_assert(route_is_complete(), "Every area except the throne room needs an exit onward");
 static_assert(god_king_only_in_throne_room(), "The God King type belongs in the throne room, and only there");
+static_assert(looks_match_types(), "An area's named enemy wears a different fighting style's kit");
 
 // Progression spec: 8 duels through the garden, 10 through the barracks, God King included.
 static_assert(duel_count(gate) + duel_count(garden) + duel_count(great_hall) + duel_count(throne_approach) +

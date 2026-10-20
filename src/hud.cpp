@@ -3,6 +3,7 @@
 #include "bn_sstream.h"
 #include "bn_string.h"
 
+#include "bn_sprite_items_bar_caps.h"
 #include "bn_sprite_items_charge_orb.h"
 #include "bn_sprite_items_hp_bar.h"
 #include "bn_sprite_items_shield_pip.h"
@@ -23,7 +24,7 @@ namespace
     constexpr int below_bar_y = -62;
     constexpr int super_bar_y = -52;
     constexpr int pip_spacing = 9;
-    constexpr int charges_left = -60;      // Just right of the super meter
+    constexpr int charges_left = -56;      // Just right of the super meter's end cap
     constexpr int charge_spacing = 9;
 
     constexpr int result_y = -8;
@@ -59,6 +60,10 @@ namespace
     constexpr int enemy_bar_first_frame = 9;
     constexpr int super_bar_first_frame = 18;
 
+    // Frames in graphics/bar_caps.bmp: gold end caps drawn against the bar's left or right end.
+    constexpr int left_cap_frame = 0;
+    constexpr int right_cap_frame = 1;
+
     // Frames in graphics/shield_pip.bmp and graphics/charge_orb.bmp.
     constexpr int full_frame = 0;
     constexpr int empty_frame = 1;
@@ -73,6 +78,18 @@ namespace
             segment.set_bg_priority(priority);
             bar.push_back(bn::move(segment));
         }
+    }
+
+    template<int MaxCaps>
+    void create_caps(bn::vector<bn::sprite_ptr, MaxCaps>& caps, int left, int segments, int y = bar_y)
+    {
+        bn::sprite_ptr left_cap = bn::sprite_items::bar_caps.create_sprite(left - segment_px / 2, y, left_cap_frame);
+        bn::sprite_ptr right_cap = bn::sprite_items::bar_caps.create_sprite(
+                    left + segments * segment_px + segment_px / 2, y, right_cap_frame);
+        left_cap.set_bg_priority(priority);
+        right_cap.set_bg_priority(priority);
+        caps.push_back(bn::move(left_cap));
+        caps.push_back(bn::move(right_cap));
     }
 
     template<int MaxSegments>
@@ -105,6 +122,9 @@ hud::hud(const char* enemy_name, int player_max_hp, int shield_pips, int magic_c
     create_bar(_player_bar, player_segments, player_bar_left);
     create_bar(_enemy_bar, enemy_bar_segments, enemy_bar_right - enemy_bar_segments * segment_px);
     create_bar(_super_bar, super_bar_segments, player_bar_left, super_bar_y);
+    create_caps(_caps, player_bar_left, player_segments);
+    create_caps(_caps, enemy_bar_right - enemy_bar_segments * segment_px, enemy_bar_segments);
+    create_caps(_caps, player_bar_left, super_bar_segments, super_bar_y);
 
     for(int index = 0; index < shield_pips; ++index)
     {

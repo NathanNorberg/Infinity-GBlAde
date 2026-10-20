@@ -94,7 +94,7 @@ struct enemy_type
     int heavy_scale_percent;       // Scales the tier's unblockable chance
     int feint_scale_percent;       // Scales the tier's feint chance
     int max_attacks_change;        // Added to the tier's longest sequence (kept within the sequence limits)
-    int palette;                   // 0 = the knight art's own colors, 1 = brute, 2 = duelist, 3 = God King
+    int palette;                   // Kit (drawn look): 0 knight, 1 brute, 2 duelist, 3 God King
 
     // How often each attack is picked, in attack_id order:
     // slash /, slash \, horizontal <, horizontal >, overhead, sweep, thrust, rising /, rising \.
@@ -339,10 +339,41 @@ constexpr int hit_streak_frames = 6;           // Slash streak across the enemy'
 constexpr int attack_lunge = 6;                // Hero leans toward the enemy on a slash
 constexpr int combo_finisher_shake = 5;        // Enemy shake on the slash that completes a combo
 constexpr int burn_flicker_frames = 3;         // Red flicker on each burn tick
+
+// Impact feel: hit-stop freezes the duel for a few frames; shake moves the arena, enemy and
+// hero (not the HUD); sparks burst at the point of contact.
+constexpr int hitstop_parry = 6;
+constexpr int hitstop_combo_finisher = 5;
+constexpr int hitstop_super = 8;
+constexpr int hitstop_shield_break = 6;
+constexpr int hitstop_hurt = 3;
+constexpr int shake_hurt = 3;                  // Pixels...
+constexpr int shake_hurt_frames = 8;           // ...for this long
+constexpr int shake_shield_break = 4;
+constexpr int shake_shield_break_frames = 14;
+constexpr int shake_super = 2;
+constexpr int shake_super_frames = 10;
+constexpr int shake_parry = 2;
+constexpr int shake_parry_frames = 4;
+constexpr int spark_frame_time = 3;            // Frames per spark animation frame
+
+// Damage numbers: rise this far over this long, blinking at the end.
+constexpr int damage_number_frames = 36;
+constexpr int damage_number_rise = 18;
+constexpr int damage_number_blink = 10;
+
+// Sound effects (no music in version 1).
+constexpr int sfx_volume_percent = 80;
+
+// Screen transitions: every change of screen fades to black and back.
+constexpr int transition_fade_frames = 12;     // Each way
 constexpr int popup_frames = 45;               // "COMBO" text and similar popups
 constexpr int super_full_blink = 8;            // Full super meter blinks, switching every N frames
-constexpr int defeat_sink_frames = 40;         // Loser sinks out of view over this many frames
+constexpr int defeat_sink_frames = 40;         // The hero sinks out of view over this many frames
 constexpr int defeat_sink_distance = 48;
+constexpr int enemy_kneel_frame = 14;          // A beaten enemy staggers, then kneels at this frame...
+constexpr int enemy_fade_start = 40;           // ...then fades out
+constexpr int enemy_fade_frames = 40;
 constexpr int result_prompt_delay = 60;        // Before "Press START" appears on win/lose
 
 // Duel rewards (progression spec): bonuses on duel XP, earned anywhere in the duel.

@@ -27,7 +27,8 @@ private:
     hero_profile& _profile;
     int _active_slot;
     const char* _debug_message = nullptr;
-    bn::regular_bg_ptr _arena_bg;
+    bn::regular_bg_ptr _arena_bg;      // The gate scene, dimmed behind the menu
+    bn::regular_bg_ptr _frame_bg;      // Ornate border (graphics/menu_frame.bmp)
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 48> _sprites;
     int _cursor = 0;

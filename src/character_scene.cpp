@@ -1,6 +1,7 @@
 #include "character_scene.h"
 
 #include "bn_bg_palettes.h"
+#include "bn_regular_bg_items_menu_frame.h"
 #include "bn_color.h"
 #include "bn_keypad.h"
 #include "bn_sstream.h"
@@ -8,6 +9,7 @@
 
 #include "common_variable_8x8_sprite_font.h"
 #include "leveling.h"
+#include "sfx.h"
 
 namespace igb
 {
@@ -34,6 +36,7 @@ namespace
 
 character_scene::character_scene(hero_profile& profile) :
     _profile(profile),
+    _frame_bg(bn::regular_bg_items::menu_frame.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font)
 {
     bn::bg_palettes::set_transparent_color(bn::color(2, 2, 6));
@@ -44,23 +47,27 @@ scene_id character_scene::update()
 {
     if(bn::keypad::b_pressed() || bn::keypad::start_pressed())
     {
+        sfx::play(bn::sound_items::sfx_menu_back);
         return scene_id::HUB;
     }
 
     if(bn::keypad::up_pressed())
     {
         _cursor = (_cursor + stat_count - 1) % stat_count;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::down_pressed())
     {
         _cursor = (_cursor + 1) % stat_count;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::a_pressed() && _profile.unspent_points > 0)
     {
         ++stat_points(_profile, _cursor);
         --_profile.unspent_points;
+        sfx::play(bn::sound_items::sfx_menu_select);
         _redraw();
     }
 

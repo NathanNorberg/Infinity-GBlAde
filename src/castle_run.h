@@ -31,8 +31,9 @@ void mark_cleared(hero_profile& profile, int hotspot);
 // Moves to another area (through an exit).
 void enter_area(hero_profile& profile, int area);
 
-// The enemy type this run rolled for a duel hotspot.
+// The enemy type this run rolled for a duel hotspot, and its named look in this area.
 [[nodiscard]] int duel_type(const hero_profile& profile, int hotspot);
+[[nodiscard]] int duel_look(const hero_profile& profile, int hotspot);
 
 // A random number from the run's seed for a hotspot, so contents stay the same after a reload.
 [[nodiscard]] unsigned roll(const hero_profile& profile, int hotspot, unsigned salt);

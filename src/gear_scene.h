@@ -1,6 +1,7 @@
 #ifndef IGB_GEAR_SCENE_H
 #define IGB_GEAR_SCENE_H
 
+#include "bn_regular_bg_ptr.h"
 #include "bn_sprite_ptr.h"
 #include "bn_sprite_text_generator.h"
 #include "bn_vector.h"
@@ -35,6 +36,7 @@ private:
 
     mode _mode;
     hero_profile& _profile;
+    bn::regular_bg_ptr _frame_bg;      // Ornate border (graphics/menu_frame.bmp)
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 112> _sprites;
     int _slot = 0;

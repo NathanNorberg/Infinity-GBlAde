@@ -1,12 +1,14 @@
 #include "gear_scene.h"
 
 #include "bn_bg_palettes.h"
+#include "bn_regular_bg_items_menu_frame.h"
 #include "bn_color.h"
 #include "bn_keypad.h"
 #include "bn_sstream.h"
 #include "bn_string.h"
 
 #include "common_variable_8x8_sprite_font.h"
+#include "sfx.h"
 
 namespace igb
 {
@@ -119,6 +121,7 @@ namespace
 gear_scene::gear_scene(mode screen_mode, hero_profile& profile) :
     _mode(screen_mode),
     _profile(profile),
+    _frame_bg(bn::regular_bg_items::menu_frame.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font)
 {
     bn::bg_palettes::set_transparent_color(bn::color(2, 2, 6));
@@ -148,11 +151,13 @@ scene_id gear_scene::update()
             }
 
             _confirming = false;
+            sfx::play(bn::sound_items::sfx_coins);
             _redraw();
         }
         else if(bn::keypad::b_pressed())
         {
             _confirming = false;
+            sfx::play(bn::sound_items::sfx_menu_back);
             _redraw();
         }
 
@@ -161,6 +166,7 @@ scene_id gear_scene::update()
 
     if(bn::keypad::b_pressed())
     {
+        sfx::play(bn::sound_items::sfx_menu_back);
         return scene_id::HUB;
     }
 
@@ -168,17 +174,20 @@ scene_id gear_scene::update()
     {
         int step = bn::keypad::r_pressed() ? 1 : int(item_slot::COUNT) - 1;
         _slot = (_slot + step) % int(item_slot::COUNT);
+        sfx::play(bn::sound_items::sfx_menu_move);
         _list_items();
         _redraw();
     }
     else if(bn::keypad::up_pressed() && _row_count > 0)
     {
         _cursor = (_cursor + _row_count - 1) % _row_count;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::down_pressed() && _row_count > 0)
     {
         _cursor = (_cursor + 1) % _row_count;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::a_pressed() && item_index >= 0)
@@ -186,11 +195,13 @@ scene_id gear_scene::update()
         if(_mode == mode::EQUIPMENT)
         {
             _profile.equipped[_slot] = item_index;
+            sfx::play(bn::sound_items::sfx_menu_select);
             _redraw();
         }
         else if(_profile.can_buy(item_index) || _profile.can_sell(item_index))
         {
             _confirming = true;
+            sfx::play(bn::sound_items::sfx_menu_select);
             _redraw();
         }
     }

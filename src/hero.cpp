@@ -7,6 +7,7 @@
 #include "bn_sprite_items_hero.h"
 
 #include "attack_data.h"
+#include "sfx.h"
 #include "tuning.h"
 
 namespace igb
@@ -177,6 +178,8 @@ void hero::update()
     {
         _read_input();
     }
+
+    _chord_buffered = false;
 
     _update_sprite();
 }
@@ -360,13 +363,27 @@ void hero::_read_input()
         _evade_direction = dir::UP;
         _enter(hero_state::HOP);
     }
+    else
+    {
+        return;
+    }
+
+    sfx::play(bn::sound_items::sfx_dodge);
 }
 
-int hero::_read_parry_chord()
+void hero::buffer_input()
 {
-    // B + direction in either order, or both on the same frame. Reads every held direction
-    // so diagonals (up-left, up-right) come through.
     if(bn::keypad::b_pressed() || (bn::keypad::b_held() && any_direction_pressed()))
+    {
+        _chord_buffered = true;
+    }
+}
+
+int hero::_read_parry_chord() const
+{
+    // B + direction in either order, or both on the same frame (or during a hit-stop freeze,
+    // if still held). Reads every held direction so diagonals come through.
+    if(bn::keypad::b_pressed() || (bn::keypad::b_held() && (any_direction_pressed() || _chord_buffered)))
     {
         return held_directions();
     }
@@ -545,7 +562,7 @@ void hero::_update_sprite()
     }
 
     _sprite.set_horizontal_flip(flip);
-    _sprite.set_position(position);
+    _sprite.set_position(position + _screen_offset);
 
     // Red flash when hit, white flash when a block absorbs a hit, dimmed while staggered.
     int flash = FLASH_NONE;

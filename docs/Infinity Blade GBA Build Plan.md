@@ -94,6 +94,22 @@ The castle and bloodline break into ten tasks, in build order (planned Oct 15).
 - [x] Beating the God King: a short ending, then the next cycle (new game plus) with a stronger God King
 - [x] Debug (jump to an area, grant keys, set the cycle, refill HP) and the exit test: a full bloodline loop, start to finish
 
+## Milestone 5 tasks
+
+Content and polish break into eleven tasks, in build order (planned Oct 15). Code-only polish comes first, so it can land while reference images are gathered for the art.
+
+- [x] Impact feel: hit-stop on parries and big hits, screen shake, spark effects on parries and blocks
+- [x] Screen transitions: fades between the title, gate, areas, duels and story scenes
+- [x] Damage numbers popping off the enemy and the hero when hits land
+- [x] Sound effects (no music for version 1): hits, parries, blocks, shield break, dodges, spells, menus, chests, level-ups; generated in code
+- [x] Art pipeline and style guide: a PNG-to-game converter, preview sheets, palette ramps and outline rules drawn from the reference images
+- [x] Hero art: every pose at 64x64, iterated against references
+- [x] Enemy art: the base knight design and all 19 poses, a collapse animation for defeat, and a distinct God King silhouette
+- [x] Named enemy roster: each area's enemies get their own names and looks (for example Gate Sentry, Garden Warden, Barracks Brute, Hall Captain, Throne Guard) over the three fighting styles, plus the God King's own crowned look
+- [x] Backgrounds: a duel arena per area matching the area screens, plus area screens, title and gate
+- [x] HUD and menus: gold-framed bars, icons, menu frames and markers in the same style
+- [ ] Final tuning pass and the version 1 exit test: a full playthrough, on hardware
+
 ## Placeholder art
 
 The prototype uses simple shapes so combat can be judged before any real pixel art exists.
@@ -107,6 +123,8 @@ The prototype uses simple shapes so combat can be judged before any real pixel a
 | HUD | Bars and pips from solid tiles | 8×8 tiles |
 
 Final pixel art replaces these in milestone 5, keeping the same sizes and palettes so code doesn't change.
+
+**Who makes it (decided Oct 15):** there's no artist, so the final art is made in code (hand-placed pixel art, not just shapes), steered by reference images and iterated through preview sheets. A PNG converter lets licensed asset packs or hand-drawn sketches drop in later. References guide style only; no sprites are copied from other games. Sound is effects only for version 1, also generated in code. The "full enemy roster" means named, differently drawn enemies per area over the existing fighting styles.
 
 **Art direction (decided Oct 15):** match the visual style of the GBA Castlevania games (Circle of the Moon, Harmony of Dissonance, Aria of Sorrow): gothic castle interiors built from dense, detailed tiles (stone, arches, candles, stained-glass colors); saturated sprites with bold, readable outlines; large, detailed enemies and bosses that dominate the screen; and an ornate HUD with a gold-framed HP bar and jewel-like icons.
 

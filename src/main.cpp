@@ -1,5 +1,8 @@
+#include "bn_bg_palettes.h"
+#include "bn_colors.h"
 #include "bn_core.h"
 #include "bn_optional.h"
+#include "bn_sprite_palettes.h"
 
 #include "area_scene.h"
 #include "castle_run.h"
@@ -11,6 +14,22 @@
 #include "save_data.h"
 #include "story_scene.h"
 #include "title_scene.h"
+
+namespace
+{
+    // Fades every background and sprite toward black over a number of frames. The scenes hold
+    // still meanwhile: nothing updates until the fade finishes.
+    void fade(bn::fixed from, bn::fixed to, int frames)
+    {
+        for(int frame = 1; frame <= frames; ++frame)
+        {
+            bn::fixed intensity = from + (to - from) * frame / frames;
+            bn::bg_palettes::set_fade(bn::colors::black, intensity);
+            bn::sprite_palettes::set_fade(bn::colors::black, intensity);
+            bn::core::update();
+        }
+    }
+}
 
 int main()
 {
@@ -31,7 +50,11 @@ int main()
     bn::optional<igb::story_scene> story;
 
     igb::scene_id current = igb::scene_id::TITLE;
+    bn::bg_palettes::set_fade(bn::colors::black, 1);
+    bn::sprite_palettes::set_fade(bn::colors::black, 1);
     title.emplace(profile, active_slot);
+    bn::core::update();
+    fade(1, 0, igb::tuning::transition_fade_frames);
 
     while(true)
     {
@@ -93,6 +116,8 @@ int main()
 
         if(next != igb::scene_id::NONE)
         {
+            fade(0, 1, igb::tuning::transition_fade_frames);
+
             area.reset();
             story.reset();
             title.reset();
@@ -164,6 +189,11 @@ int main()
             }
 
             current = next;
+
+            // Show the new scene's first frame, then fade it in.
+            bn::core::update();
+            fade(1, 0, igb::tuning::transition_fade_frames);
+            continue;
         }
 
         bn::core::update();

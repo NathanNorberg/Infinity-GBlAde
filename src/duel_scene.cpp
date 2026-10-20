@@ -6,9 +6,10 @@
 #include "bn_keypad.h"
 #include "bn_sstream.h"
 
-#include "bn_regular_bg_items_arena.h"
 
+#include "area_art.h"
 #include "castle_run.h"
+#include "sfx.h"
 #include "item_roster.h"
 
 namespace igb
@@ -18,18 +19,31 @@ namespace
 {
     // Layer order, back to front: arena (3), enemy (2), hero sprite (1), telegraph and HUD (0).
     constexpr int arena_priority = 3;
+
+    // Where sparks appear: the enemy's chest, and around the hero's upper body.
+    constexpr bn::fixed_point enemy_body_center(0, -12);
+    constexpr bn::fixed_point hero_spark_offset(8, -24);
+    constexpr int hero_spark_reach = 16;
+
+    // Where damage numbers appear.
+    constexpr int enemy_number_spread = 14;
+    constexpr int enemy_number_lift = -18;
+    constexpr bn::fixed_point hero_number_offset(0, -36);
 }
 
 duel_scene::duel_scene(debug_settings& debug, hero_profile& profile) :
     _tier(tuning::scale_for_cycle(tuning::combine(*tuning::enemy_tiers[debug.tier_index],
                                                   *tuning::enemy_types[debug.type_index]),
                                   debug.type_index, profile.cycle)),
+    _look(profile.in_run && profile.run_duel_hotspot >= 0 && ! debug.enemy_override ?
+          run::duel_look(profile, profile.run_duel_hotspot) : -1),
     _debug_settings(debug),
     _profile(profile),
-    _arena_bg(bn::regular_bg_items::arena.create_bg(0, 0)),
-    _enemy(_tier, *tuning::enemy_types[debug.type_index]),
+    _arena_bg(area_backgrounds[profile.in_run ? profile.run_area : castle::great_hall]->create_bg(0, 0)),
+    _enemy(_tier, *tuning::enemy_types[debug.type_index], _look),
     _hero(profile, profile.in_run ? profile.run_hp : profile.max_hp()),
-    _hud(_tier.name, profile.max_hp(), profile.shield_pips(), profile.magic_charges()),
+    _hud(_look >= 0 ? look::looks[_look].name : _tier.name, profile.max_hp(), profile.shield_pips(),
+         profile.magic_charges()),
     _debug(debug, profile),
     _combo(profile.weapon_combo()),
     _ring(profile.ring_spell()),
@@ -40,7 +54,7 @@ duel_scene::duel_scene(debug_settings& debug, hero_profile& profile) :
     _arena_bg.set_priority(arena_priority);
     _hero.set_spell(spell_of(_ring));
 
-    // The title and hub dim this same arena art; make sure the duel starts at full brightness.
+    // The gate hub dims the gate's art; make sure the duel starts at full brightness.
     bn::bg_palette_ptr arena_palette = _arena_bg.palette();
     arena_palette.set_fade(bn::colors::black, 0);
 }
@@ -67,7 +81,20 @@ scene_id duel_scene::update()
         return scene_id::NONE;
     }
 
+    // Hit-stop: the duel freezes for a few frames after a big moment.
+    if(_hitstop > 0)
+    {
+        --_hitstop;
+        _hero.buffer_input();
+        _sparks.update();
+        _damage_numbers.update();
+        return scene_id::NONE;
+    }
+
     ++_frames;
+    _update_shake();
+    _sparks.update();
+    _damage_numbers.update();
 
     // Super first: fired on the impact frame, it still stops the blade.
     if(bn::keypad::l_pressed())
@@ -84,6 +111,7 @@ scene_id duel_scene::update()
     if(_hero.channel_started())
     {
         --_magic_charges;
+        sfx::play(bn::sound_items::sfx_channel);
     }
 
     if(_hero.cast_started())
@@ -131,7 +159,7 @@ scene_id duel_scene::update()
         }
     }
 
-    _arena_bg.set_position(_hero.arena_nudge());
+    _arena_bg.set_position(_hero.arena_nudge() + _shake_offset);
     _update_prompts();
     _hud.update(_hero.hp(), _hero.max_hp(), _hero.shield_pips(), _super, _magic_charges, _enemy.hp(),
                 _enemy.max_hp());
@@ -221,6 +249,8 @@ void duel_scene::_set_paused(bool paused)
     // Dim the arena and enemy; the HUD and pause text are sprites and stay bright.
     bn::bg_palettes::set_fade(bn::colors::black, paused ? bn::fixed(0.6) : bn::fixed(0));
 
+    sfx::play(paused ? bn::sound_items::sfx_menu_select : bn::sound_items::sfx_menu_back);
+
     if(paused)
     {
         _hud.hide_spell_prompt();
@@ -231,6 +261,55 @@ void duel_scene::_set_paused(bool paused)
     {
         _hud.hide_pause();
     }
+}
+
+void duel_scene::_impact(int hitstop, int shake, int shake_frames)
+{
+    _hitstop = hitstop > _hitstop ? hitstop : _hitstop;
+
+    if(shake >= _shake_strength || _shake_frames == 0)
+    {
+        _shake_strength = shake;
+        _shake_frames = shake_frames;
+    }
+}
+
+void duel_scene::_number_on_enemy(int value, damage_numbers::color color)
+{
+    // Spread across his chest so quick hits don't stack exactly.
+    int jitter = (_frames * 7) % (2 * enemy_number_spread + 1) - enemy_number_spread;
+    _damage_numbers.spawn(value, enemy_body_center + bn::fixed_point(jitter, enemy_number_lift), color);
+}
+
+void duel_scene::_number_on_hero(int value, damage_numbers::color color)
+{
+    _damage_numbers.spawn(value, _hero.position() + hero_number_offset, color);
+}
+
+void duel_scene::_update_shake()
+{
+    if(_shake_frames > 0)
+    {
+        --_shake_frames;
+        int x = _shake_frames % 2 ? _shake_strength : -_shake_strength;
+        int y = (_shake_frames / 2) % 2 ? _shake_strength / 2 : -_shake_strength / 2;
+        _shake_offset = bn::fixed_point(x, y);
+    }
+    else
+    {
+        _shake_offset = bn::fixed_point();
+    }
+
+    _enemy.set_screen_offset(_shake_offset);
+    _hero.set_screen_offset(_shake_offset);
+}
+
+void duel_scene::_spark_at_hero(int direction, sparks::color color)
+{
+    // Toward the side the blade met: the parry direction, or the shield side for a block.
+    bn::fixed_point toward((direction & dir::LEFT) ? -hero_spark_reach : (direction & dir::RIGHT) ? hero_spark_reach : 0,
+                           (direction & dir::UP) ? -hero_spark_reach : (direction & dir::DOWN) ? hero_spark_reach : 0);
+    _sparks.spawn(_hero.position() + hero_spark_offset + toward, color);
 }
 
 void duel_scene::_check_result()
@@ -274,6 +353,7 @@ void duel_scene::_check_result()
         }
 
         _hud.show_victory(_rewards, _profile);
+        sfx::play(_rewards.levels_gained > 0 ? bn::sound_items::sfx_level_up : bn::sound_items::sfx_victory);
     }
     else if(_hero.hp() == 0)
     {
@@ -282,6 +362,7 @@ void duel_scene::_check_result()
         _hero.defeat();
         _enemy.stand_down();
         _hud.show_result("DEFEATED");
+        sfx::play(bn::sound_items::sfx_defeat);
 
         // In a run, death ends it: part of the gold is lost and the next generation takes up
         // the sword at the gate.
@@ -325,6 +406,9 @@ void duel_scene::_resolve_impact()
 
         ++_hits;
         _hero.hurt(hit_damage);
+        _number_on_hero(hit_damage, damage_numbers::color::RED);
+    sfx::play(bn::sound_items::sfx_hurt);
+        _impact(tuning::hitstop_hurt, tuning::shake_hurt, tuning::shake_hurt_frames);
         return;
     }
 
@@ -338,6 +422,9 @@ void duel_scene::_resolve_impact()
             _add_super(tuning::super_gain_parry);
             _set_outcome("Parry ok", started);
             _hero.parry_succeeded();
+            _impact(tuning::hitstop_parry, tuning::shake_parry, tuning::shake_parry_frames);
+            sfx::play(bn::sound_items::sfx_parry);
+            _spark_at_hero(_hero.parry_direction(), sparks::color::GOLD);
 
             if(_enemy.on_last_attack())
             {
@@ -366,6 +453,9 @@ void duel_scene::_resolve_impact()
 
         ++_hits;
         _hero.hurt(hit_damage);
+        _number_on_hero(hit_damage, damage_numbers::color::RED);
+    sfx::play(bn::sound_items::sfx_hurt);
+        _impact(tuning::hitstop_hurt, tuning::shake_hurt, tuning::shake_hurt_frames);
         return;
     }
 
@@ -378,12 +468,26 @@ void duel_scene::_resolve_impact()
         {
             _set_outcome("Block");
             _hero.absorb_block();
+            _spark_at_hero(dir::LEFT, sparks::color::BLUE);
+
+            if(_hero.shield_pips() == 0)
+            {
+                _impact(tuning::hitstop_shield_break, tuning::shake_shield_break, tuning::shake_shield_break_frames);
+                sfx::play(bn::sound_items::sfx_shield_break);
+            }
+            else
+            {
+                sfx::play(bn::sound_items::sfx_block);
+            }
         }
         else
         {
             // Unblockable attacks break the shield and still land.
             _set_outcome("Shield broken");
             _hero.break_shield(hit_damage);
+            _number_on_hero(hit_damage, damage_numbers::color::RED);
+    sfx::play(bn::sound_items::sfx_hurt);
+            _impact(tuning::hitstop_shield_break, tuning::shake_shield_break, tuning::shake_shield_break_frames);
         }
 
         return;
@@ -392,6 +496,9 @@ void duel_scene::_resolve_impact()
     ++_hits;
     _set_outcome("Hit");
     _hero.hurt(hit_damage);
+    _number_on_hero(hit_damage, damage_numbers::color::RED);
+    sfx::play(bn::sound_items::sfx_hurt);
+    _impact(tuning::hitstop_hurt, tuning::shake_hurt, tuning::shake_hurt_frames);
 }
 
 void duel_scene::_set_outcome(const char* outcome, int frames_before_impact)
@@ -434,6 +541,18 @@ void duel_scene::_resolve_attack()
     }
 
     _enemy.take_hit(_hero.attack_direction(), damage, finisher);
+    _number_on_enemy(damage, finisher || _super_opening ? damage_numbers::color::GOLD : damage_numbers::color::WHITE);
+
+    if(finisher)
+    {
+        _impact(tuning::hitstop_combo_finisher, 0, 0);
+        _sparks.spawn(enemy_body_center, sparks::color::GOLD);
+        sfx::play(bn::sound_items::sfx_hit_heavy);
+    }
+    else
+    {
+        sfx::play(bn::sound_items::sfx_hit);
+    }
     _add_super(tuning::super_gain_hit);
 
     if(finisher)
@@ -484,6 +603,7 @@ void duel_scene::_update_burn()
         _burn_frames = 0;
         --_burn_ticks_left;
         _enemy.take_damage(_burn_tick_damage);
+        _number_on_enemy(_burn_tick_damage, damage_numbers::color::GOLD);
     }
 }
 
@@ -503,6 +623,9 @@ void duel_scene::_try_super()
     _combo.reset();
     _hero.flash();
     _hud.show_popup("SUPER!");
+    _impact(tuning::hitstop_super, tuning::shake_super, tuning::shake_super_frames);
+    sfx::play(bn::sound_items::sfx_hit_heavy);
+    _sparks.spawn(enemy_body_center, sparks::color::GOLD);
     _set_outcome("Super");
 }
 
@@ -532,8 +655,10 @@ void duel_scene::_cast_spell()
                 _enemy.interrupt(tuning::fire_stagger_frames);
             }
 
+            sfx::play(bn::sound_items::sfx_fire);
             int fire = _profile.spell_damage(tuning::fire_damage);
             _enemy.take_hit(dir::UP, fire, true);
+            _number_on_enemy(fire, damage_numbers::color::GOLD);
             stream << "FIRE -" << fire;
         }
         break;
@@ -541,13 +666,17 @@ void duel_scene::_cast_spell()
     case spell_id::ICE:
         // Frozen: an opening.
         _enemy.open(_profile.spell_power(tuning::ice_freeze_frames), open_kind::FROZEN);
+        sfx::play(bn::sound_items::sfx_ice);
         stream << "ICE";
         break;
 
     case spell_id::HEAL:
         {
             int amount = _profile.spell_power(_hero.max_hp() * tuning::heal_percent / 100);
+            sfx::play(bn::sound_items::sfx_heal);
+            int before = _hero.hp();
             _hero.heal(amount);
+            _number_on_hero(_hero.hp() - before, damage_numbers::color::GREEN);
 
             if(! open)
             {
@@ -565,8 +694,10 @@ void duel_scene::_cast_spell()
                 _enemy.interrupt(_profile.spell_power(tuning::shock_stagger_frames));
             }
 
+            sfx::play(bn::sound_items::sfx_shock);
             int shock = _profile.spell_damage(tuning::shock_damage);
             _enemy.take_hit(dir::DOWN, shock);
+            _number_on_enemy(shock, damage_numbers::color::GOLD);
             stream << "SHOCK -" << shock;
         }
         break;

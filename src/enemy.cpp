@@ -3,29 +3,9 @@
 #include "bn_bg_palette_ptr.h"
 #include "bn_colors.h"
 
-#include "bn_regular_bg_items_enemy_idle.h"
-#include "bn_regular_bg_items_enemy_st_horiz_l.h"
-#include "bn_regular_bg_items_enemy_st_horiz_r.h"
-#include "bn_regular_bg_items_enemy_st_overhead.h"
-#include "bn_regular_bg_items_enemy_st_rise_l.h"
-#include "bn_regular_bg_items_enemy_st_rise_r.h"
-#include "bn_regular_bg_items_enemy_st_slash_l.h"
-#include "bn_regular_bg_items_enemy_st_slash_r.h"
-#include "bn_regular_bg_items_enemy_st_sweep.h"
-#include "bn_regular_bg_items_enemy_st_thrust.h"
-#include "bn_regular_bg_items_enemy_wu_horiz_l.h"
-#include "bn_regular_bg_items_enemy_wu_horiz_r.h"
-#include "bn_regular_bg_items_enemy_wu_overhead.h"
-#include "bn_regular_bg_items_enemy_wu_rise_l.h"
-#include "bn_regular_bg_items_enemy_wu_rise_r.h"
-#include "bn_regular_bg_items_enemy_wu_slash_l.h"
-#include "bn_regular_bg_items_enemy_wu_slash_r.h"
-#include "bn_regular_bg_items_enemy_wu_sweep.h"
-#include "bn_regular_bg_items_enemy_wu_thrust.h"
 #include "bn_sprite_items_telegraph.h"
-#include "bn_bg_palette_items_enemy_palette_brute.h"
-#include "bn_bg_palette_items_enemy_palette_duelist.h"
-#include "bn_bg_palette_items_enemy_palette_god_king.h"
+
+#include "enemy_pose_tables.h"
 
 namespace igb
 {
@@ -35,41 +15,13 @@ namespace
     constexpr int bg_priority = 2;          // Behind the hero sprite (1), in front of the arena (3)
     constexpr int telegraph_priority = 0;   // In front of the hero so the trail is never hidden
 
-    // Indexed by attack_id.
-    constexpr const bn::regular_bg_item* windup_poses[] = {
-        &bn::regular_bg_items::enemy_wu_slash_l,
-        &bn::regular_bg_items::enemy_wu_slash_r,
-        &bn::regular_bg_items::enemy_wu_horiz_l,
-        &bn::regular_bg_items::enemy_wu_horiz_r,
-        &bn::regular_bg_items::enemy_wu_overhead,
-        &bn::regular_bg_items::enemy_wu_sweep,
-        &bn::regular_bg_items::enemy_wu_thrust,
-        &bn::regular_bg_items::enemy_wu_rise_l,
-        &bn::regular_bg_items::enemy_wu_rise_r,
-    };
+    // Pose tables come from src/enemy_pose_tables.h (generated with the art).
+    using enemy_art::windup_poses;
+    using enemy_art::strike_poses;
 
-    constexpr const bn::regular_bg_item* strike_poses[] = {
-        &bn::regular_bg_items::enemy_st_slash_l,
-        &bn::regular_bg_items::enemy_st_slash_r,
-        &bn::regular_bg_items::enemy_st_horiz_l,
-        &bn::regular_bg_items::enemy_st_horiz_r,
-        &bn::regular_bg_items::enemy_st_overhead,
-        &bn::regular_bg_items::enemy_st_sweep,
-        &bn::regular_bg_items::enemy_st_thrust,
-        &bn::regular_bg_items::enemy_st_rise_l,
-        &bn::regular_bg_items::enemy_st_rise_r,
-    };
-
-    static_assert(sizeof(windup_poses) / sizeof(windup_poses[0]) == int(attack_id::COUNT));
-    static_assert(sizeof(strike_poses) / sizeof(strike_poses[0]) == int(attack_id::COUNT));
-
-    // Palette swaps by enemy_type::palette; index 0 keeps the pose art's own colors.
-    constexpr const bn::bg_palette_item* type_palettes[] = {
-        nullptr,
-        &bn::bg_palette_items::enemy_palette_brute,
-        &bn::bg_palette_items::enemy_palette_duelist,
-        &bn::bg_palette_items::enemy_palette_god_king,
-    };
+    static_assert(sizeof(windup_poses[0]) / sizeof(windup_poses[0][0]) == int(attack_id::COUNT));
+    static_assert(sizeof(strike_poses[0]) / sizeof(strike_poses[0][0]) == int(attack_id::COUNT));
+    static_assert(sizeof(enemy_art::idle_poses) / sizeof(enemy_art::idle_poses[0]) == look::kit_count);
 
     // Telegraph sprite frames.
     constexpr int trail_normal_frame = 0;
@@ -99,10 +51,11 @@ namespace
     constexpr bn::fixed defeat_fade_max = 0.7;
 }
 
-enemy::enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type) :
+enemy::enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type, int look) :
     _tier(tier),
     _type(type),
-    _bg(bn::regular_bg_items::enemy_idle.create_bg(0, 0)),
+    _look(look),
+    _bg(enemy_art::idle_poses[type.palette]->create_bg(0, 0)),
     _hp(type.max_hp * tier.hp_percent / 100)
 {
     _bg.set_priority(bg_priority);
@@ -332,11 +285,15 @@ void enemy::_enter(enemy_state state, int length)
         break;
 
     case enemy_state::STRIKE:
-        _set_pose(*strike_poses[int(current_attack().id)]);
+        _set_pose(*strike_poses[_type.palette][int(current_attack().id)]);
+        break;
+
+    case enemy_state::DEFEATED:
+        _set_pose(*enemy_art::stagger_poses[_type.palette]);
         break;
 
     default:
-        _set_pose(bn::regular_bg_items::enemy_idle);
+        _set_pose(*enemy_art::idle_poses[_type.palette]);
         break;
     }
 }
@@ -385,9 +342,10 @@ void enemy::_set_pose(const bn::regular_bg_item& pose)
 {
     _bg.set_item(pose);
 
-    if(const bn::bg_palette_item* palette = type_palettes[_type.palette])
+    // A named enemy recolors his kit; otherwise the kit's own colors (in the pose art) stay.
+    if(_look >= 0)
     {
-        _bg.set_palette(*palette);
+        _bg.set_palette(*enemy_art::look_palettes[_look]);
     }
 
     // The palette may be new, so re-apply whatever fade is wanted this frame.
@@ -425,7 +383,7 @@ attack_id enemy::_pick_feint(attack_id real)
 void enemy::_show_windup(attack_id id, bool heavy)
 {
     const attack_type& type = attack_type_of(id);
-    _set_pose(*windup_poses[int(id)]);
+    _set_pose(*windup_poses[_type.palette][int(id)]);
     _place_trail(type.swing_from, type.swing_to, heavy ? trail_heavy_frame : trail_normal_frame);
 }
 
@@ -463,11 +421,18 @@ void enemy::_update_effects()
 
     if(_state == enemy_state::DEFEATED)
     {
-        int sink = _state_frames < tuning::defeat_sink_frames ? _state_frames : tuning::defeat_sink_frames;
+        // Staggers, drops to one knee on his planted sword, then fades.
+        if(_state_frames == tuning::enemy_kneel_frame)
+        {
+            _set_pose(*enemy_art::kneel_poses[_type.palette]);
+        }
+
+        int fading = _state_frames - tuning::enemy_fade_start;
+        fading = fading < 0 ? 0 : fading > tuning::enemy_fade_frames ? tuning::enemy_fade_frames : fading;
         bn::bg_palette_ptr palette = _bg.palette();
-        palette.set_fade(bn::colors::black, (defeat_fade_max * sink) / tuning::defeat_sink_frames);
+        palette.set_fade(bn::colors::black, (defeat_fade_max * fading) / tuning::enemy_fade_frames);
         _fade = FADE_DEFEAT;
-        _bg.set_position(0, (tuning::defeat_sink_distance * sink) / tuning::defeat_sink_frames);
+        _bg.set_position(_screen_offset);
         return;
     }
 
@@ -551,7 +516,7 @@ void enemy::_update_effects()
     }
 
     int slump_y = _state == enemy_state::OPEN ? tuning::enemy_open_slump : 0;
-    _bg.set_position(shake_x, slump_y);
+    _bg.set_position(_screen_offset + bn::fixed_point(shake_x, slump_y));
 }
 
 void enemy::_update_trail()

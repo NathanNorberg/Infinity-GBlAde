@@ -5,16 +5,19 @@
 #include "bn_string.h"
 
 #include "combo.h"
+#include "damage_numbers.h"
 #include "debug_overlay.h"
 #include "enemy.h"
 #include "hero.h"
 #include "hud.h"
 #include "scene.h"
+#include "sparks.h"
 
 namespace igb
 {
 
-// Runs one duel: owns the arena, the enemy and the hero, and turns input into outcomes.
+// Runs one duel: owns the arena (the area's background), the enemy and the hero, and turns input
+// into outcomes.
 class duel_scene
 {
 
@@ -36,6 +39,7 @@ public:
 
 private:
     tuning::enemy_tier _tier;          // This duel's tier combined with the enemy type
+    int _look;                         // Named enemy (castle duels), or -1 for the type's own look
     const debug_settings& _debug_settings;
     hero_profile& _profile;
     bn::regular_bg_ptr _arena_bg;
@@ -54,6 +58,14 @@ private:
     int _burn_ticks_left = 0;          // Fire weapon burn after a combo
     int _burn_tick_damage = 0;
     int _burn_frames = 0;
+
+    // Impact feel.
+    sparks _sparks;
+    damage_numbers _damage_numbers;
+    int _hitstop = 0;
+    int _shake_frames = 0;
+    int _shake_strength = 0;
+    bn::fixed_point _shake_offset;
 
     // Duel-wide records for the reward bonuses.
     bool _had_perfect_sequence = false;
@@ -88,6 +100,11 @@ private:
     void _resolve_impact();
     void _set_outcome(const char* outcome, int frames_before_impact = -1);
     void _resolve_attack();
+    void _impact(int hitstop, int shake, int shake_frames);
+    void _update_shake();
+    void _spark_at_hero(int direction, sparks::color color);
+    void _number_on_enemy(int value, damage_numbers::color color);
+    void _number_on_hero(int value, damage_numbers::color color);
     void _update_burn();
     void _try_super();
     void _cast_spell();

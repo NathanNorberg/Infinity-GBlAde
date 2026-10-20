@@ -3,18 +3,14 @@
 #include "bn_keypad.h"
 #include "bn_sstream.h"
 
-#include "bn_regular_bg_items_area_barracks.h"
-#include "bn_regular_bg_items_area_garden.h"
-#include "bn_regular_bg_items_area_gate.h"
-#include "bn_regular_bg_items_area_great_hall.h"
-#include "bn_regular_bg_items_area_throne_approach.h"
-#include "bn_regular_bg_items_area_throne_room.h"
 #include "bn_sprite_items_arrows.h"
 #include "bn_sprite_items_markers.h"
 
+#include "area_art.h"
 #include "castle_run.h"
 #include "common_variable_8x8_sprite_font.h"
 #include "save_data.h"
+#include "sfx.h"
 
 namespace igb
 {
@@ -23,17 +19,7 @@ namespace
 {
     using castle::hotspot_kind;
 
-    // Indexed by area.
-    constexpr const bn::regular_bg_item* backgrounds[] = {
-        &bn::regular_bg_items::area_gate,
-        &bn::regular_bg_items::area_garden,
-        &bn::regular_bg_items::area_barracks,
-        &bn::regular_bg_items::area_great_hall,
-        &bn::regular_bg_items::area_throne_approach,
-        &bn::regular_bg_items::area_throne_room,
-    };
 
-    static_assert(sizeof(backgrounds) / sizeof(backgrounds[0]) == castle::area_count);
 
     // Frames in graphics/markers.bmp.
     constexpr int marker_duel = 0;
@@ -73,7 +59,7 @@ namespace
 area_scene::area_scene(hero_profile& profile, int active_slot) :
     _profile(profile),
     _active_slot(active_slot),
-    _bg(backgrounds[profile.run_area]->create_bg(0, 0)),
+    _bg(area_backgrounds[profile.run_area]->create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font),
     _cursor_arrow(bn::sprite_items::arrows.create_sprite(0, 0, cursor_arrow_frame))
 {
@@ -150,6 +136,7 @@ scene_id area_scene::_act()
     case hotspot_kind::DUEL:
         if(! done)
         {
+            sfx::play(bn::sound_items::sfx_menu_select);
             _profile.run_duel_hotspot = _cursor;
             _save();
             return scene_id::DUEL;
@@ -163,6 +150,7 @@ scene_id area_scene::_act()
             _profile.gold += gold;
             run::mark_cleared(_profile, _cursor);
             stream << "+" << gold << " gold";
+            sfx::play(bn::sound_items::sfx_coins);
             _save();
         }
         break;
@@ -185,6 +173,7 @@ scene_id area_scene::_act()
             else
             {
                 stream << "Locked. Elite guards may carry keys.";
+                sfx::play(bn::sound_items::sfx_menu_back);
             }
         }
         break;
@@ -192,12 +181,14 @@ scene_id area_scene::_act()
     default:    // EXIT
         if(run::duels_cleared(_profile))
         {
+            sfx::play(bn::sound_items::sfx_menu_select);
             run::enter_area(_profile, hotspot.target_area);
             _save();
             return scene_id::AREA;  // Rebuild for the new area
         }
 
         stream << "Defeat every guard here first";
+        sfx::play(bn::sound_items::sfx_menu_back);
         break;
     }
 
@@ -300,6 +291,7 @@ void area_scene::_open_chest(int hotspot, bool locked)
     }
 
     run::mark_cleared(_profile, hotspot);
+    sfx::play(bn::sound_items::sfx_chest);
     _save();
 }
 
@@ -334,6 +326,7 @@ void area_scene::_move_cursor(int dx, int dy)
 
     if(best >= 0)
     {
+        sfx::play(bn::sound_items::sfx_menu_move);
         _cursor = best;
         _message.clear();
         _redraw_text();
@@ -431,8 +424,7 @@ void area_scene::_redraw_text()
                 }
                 else
                 {
-                    stream << tuning::enemy_tiers[area.tier_index]->name << " " << tuning::enemy_types[type]->name
-                           << "    A: fight";
+                    stream << look::looks[run::duel_look(_profile, _cursor)].name << "    A: fight";
                 }
             }
             break;

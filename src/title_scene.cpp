@@ -6,9 +6,10 @@
 #include "bn_sstream.h"
 #include "bn_string.h"
 
-#include "bn_regular_bg_items_arena.h"
+#include "bn_regular_bg_items_title.h"
 
 #include "common_variable_8x8_sprite_font.h"
+#include "sfx.h"
 
 namespace igb
 {
@@ -27,11 +28,11 @@ namespace
 title_scene::title_scene(hero_profile& profile, int& active_slot) :
     _profile(profile),
     _active_slot(active_slot),
-    _arena_bg(bn::regular_bg_items::arena.create_bg(0, 0)),
+    _arena_bg(bn::regular_bg_items::title.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font)
 {
     bn::bg_palette_ptr palette = _arena_bg.palette();
-    palette.set_fade(bn::colors::black, bn::fixed(0.6));
+    palette.set_fade(bn::colors::black, bn::fixed(0.25));
 
     for(int slot = 0; slot < save::slot_count; ++slot)
     {
@@ -76,6 +77,7 @@ scene_id title_scene::update()
     {
         if(bn::keypad::a_pressed())
         {
+            sfx::play(bn::sound_items::sfx_menu_select);
             _start(true);
             return scene_id::HUB;
         }
@@ -91,11 +93,13 @@ scene_id title_scene::update()
 
     if(bn::keypad::up_pressed() || bn::keypad::down_pressed())
     {
+        sfx::play(bn::sound_items::sfx_menu_move);
         _cursor = (_cursor + 1) % save::slot_count;
         _redraw();
     }
     else if(bn::keypad::a_pressed() || bn::keypad::start_pressed())
     {
+        sfx::play(bn::sound_items::sfx_menu_select);
         _start(! _slots[_cursor].used);
         return scene_id::HUB;
     }

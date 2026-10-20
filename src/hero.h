@@ -162,6 +162,22 @@ public:
     // dir:: flags the current parry points toward (two for a diagonal); dir::NONE when not parrying.
     [[nodiscard]] int parry_direction() const;
 
+    // Called on hit-stop frames instead of update(): remembers a B + direction pressed during
+    // the freeze so it still counts when the duel resumes.
+    void buffer_input();
+
+    // Screen shake: an offset added to the hero sprite's position.
+    void set_screen_offset(bn::fixed_point offset)
+    {
+        _screen_offset = offset;
+    }
+
+    // Current sprite position (for placing sparks).
+    [[nodiscard]] bn::fixed_point position() const
+    {
+        return _sprite.position();
+    }
+
     // Arena BG offset that sells the dodge as camera motion.
     [[nodiscard]] bn::fixed_point arena_nudge() const;
 
@@ -185,6 +201,8 @@ private:
     int _max_hp;
     int _hp;
     int _max_pips;
+    bn::fixed_point _screen_offset;
+    bool _chord_buffered = false;
     int _refill_frames;
     int _evade_cooldown = 0;
     int _shown_frame = 0;
@@ -196,7 +214,7 @@ private:
     void _enter(hero_state state);
     void _lose_hp(int damage);
     void _read_input();
-    [[nodiscard]] static int _read_parry_chord();
+    [[nodiscard]] int _read_parry_chord() const;
     void _start_parry(int direction);
     void _start_attack(int direction);
     void _start_chord(int direction);

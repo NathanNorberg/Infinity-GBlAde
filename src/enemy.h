@@ -7,6 +7,7 @@
 #include "bn_vector.h"
 
 #include "attack_data.h"
+#include "enemy_looks.h"
 
 namespace igb
 {
@@ -42,8 +43,9 @@ class enemy
 {
 
 public:
-    // tier is the combined tier + type settings (see tuning::combine).
-    enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type);
+    // tier is the combined tier + type settings (see tuning::combine). look is a named enemy
+    // (src/enemy_looks.h) whose colors recolor the type's kit, or -1 for the kit's own colors.
+    enemy(const tuning::enemy_tier& tier, const tuning::enemy_type& type, int look);
 
     void update();
 
@@ -68,6 +70,12 @@ public:
 
     // Shock weapon: when the current opening ends, he stays stunned this long first.
     void stun_after_opening(int frames);
+
+    // Screen shake: an offset added to the enemy layer's position.
+    void set_screen_offset(bn::fixed_point offset)
+    {
+        _screen_offset = offset;
+    }
 
     // Duel over: defeat() when out of HP, stand_down() when the hero has fallen.
     void defeat();
@@ -137,6 +145,7 @@ private:
 
     tuning::enemy_tier _tier;
     const tuning::enemy_type& _type;
+    int _look;
     bn::regular_bg_ptr _bg;
     bn::vector<bn::sprite_ptr, trail_dots> _trail;
     bn::random _random;
@@ -154,6 +163,7 @@ private:
     bool _reel_continues = true;   // After STAGGERED: true = next attack, false = new sequence
     int _after_opening_stun = 0;
     int _tick_flicker = 0;         // Counts down after a burn tick
+    bn::fixed_point _screen_offset;
     bool _impact = false;
     bool _sequence_finished = false;
     int _fade = 0;

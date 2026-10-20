@@ -13,7 +13,7 @@
 namespace igb
 {
 
-// Title over the dimmed arena with the two save slots. A on a used slot continues it; A on an
+// Title over the castle at night with the two save slots. A on a used slot continues it; A on an
 // empty slot starts a new game there; B on a used slot starts over after a confirm. Fills in
 // the profile and the active slot, then goes to the gate hub. Debug: Select + Start erases
 // both slots after a confirm.
@@ -28,7 +28,7 @@ public:
 private:
     hero_profile& _profile;
     int& _active_slot;
-    bn::regular_bg_ptr _arena_bg;
+    bn::regular_bg_ptr _arena_bg;      // The castle at night
     bn::sprite_text_generator _text_generator;
     bn::vector<bn::sprite_ptr, 48> _sprites;
     save::slot_summary _slots[save::slot_count];

@@ -6,12 +6,14 @@
 #include "bn_sstream.h"
 #include "bn_string.h"
 
-#include "bn_regular_bg_items_arena.h"
+#include "bn_regular_bg_items_area_gate.h"
+#include "bn_regular_bg_items_menu_frame.h"
 
 #include "common_variable_8x8_sprite_font.h"
 #include "castle_run.h"
 #include "leveling.h"
 #include "save_data.h"
+#include "sfx.h"
 
 namespace igb
 {
@@ -45,11 +47,13 @@ namespace
 hub_scene::hub_scene(hero_profile& profile, int active_slot) :
     _profile(profile),
     _active_slot(active_slot),
-    _arena_bg(bn::regular_bg_items::arena.create_bg(0, 0)),
+    _arena_bg(bn::regular_bg_items::area_gate.create_bg(0, 0)),
+    _frame_bg(bn::regular_bg_items::menu_frame.create_bg(0, 0)),
     _text_generator(common::variable_8x8_sprite_font)
 {
     bn::bg_palette_ptr palette = _arena_bg.palette();
     palette.set_fade(bn::colors::black, bn::fixed(0.6));
+    _frame_bg.set_priority(2);         // In front of the gate
     _redraw();
 }
 
@@ -66,16 +70,20 @@ scene_id hub_scene::update()
     {
         _cursor = (_cursor + OPTION_COUNT - 1) % OPTION_COUNT;
         _debug_message = nullptr;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::down_pressed())
     {
         _cursor = (_cursor + 1) % OPTION_COUNT;
         _debug_message = nullptr;
+        sfx::play(bn::sound_items::sfx_menu_move);
         _redraw();
     }
     else if(bn::keypad::a_pressed() || bn::keypad::start_pressed())
     {
+        sfx::play(bn::sound_items::sfx_menu_select);
+
         switch(_cursor)
         {
 
@@ -136,6 +144,7 @@ bool hub_scene::_update_debug_grants()
     }
 
     save::write(_active_slot, _profile);
+    sfx::play(bn::sound_items::sfx_coins);
     _redraw();
     return true;
 }
